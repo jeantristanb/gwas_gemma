@@ -12,7 +12,7 @@ EOL=chr(10)
 
 def parseArguments():
     parser = argparse.ArgumentParser(description='fill in missing bim values')
-    parser.add_argument('--inp_fam',type=str,required=True)
+    parser.add_argument('--inp_fam',type=str,required=False)
     parser.add_argument('--lind',type=str,required=False)
     parser.add_argument('--data',type=str,required=True,help="File with phenotype and covariate data")
     parser.add_argument('--cov_list', type=str,help="comma separated list of covariates",default="")
@@ -23,8 +23,9 @@ def parseArguments():
     parser.add_argument('--covqual_file', type=str,help="output covariate file")
     parser.add_argument('--cov_file', type=str,help="output covariate file")
     parser.add_argument('--gxe_out', type=str,help="output gxe file (gemma use)")
+    parser.add_argument('--bimbam_ind', type=str,help="list of individu bim bam")
     parser.add_argument('--gxe', type=str,help="gxe covariate (gemma use)")
-    parser.add_argument('--form_out', type=int,help="format output : 1:Gemma, 2:boltlmm, 3:FastLmm, 4:gcta", required=True)
+    parser.add_argument('--form_out', type=int,help="format output : 1:Gemma, 2:boltlmm, 3:FastLmm, 4:gcta 5: gemma bimbam", required=True)
     args = parser.parse_args()
     return args
 
@@ -87,7 +88,7 @@ else :
    gxe=[]
   
 
-if args.form_out==1 :
+if args.form_out==1 or args.form_out==5:
    MissingOut="NA"
 elif  args.form_out==2:
     MissingOut="NA" 
@@ -124,13 +125,35 @@ for (label, transform) in zip(pheno_labels+covar_labels, pheno_transform+cover_t
             sys.exit(10)
     datad[label]=datad[label].apply(check_missing, MissingOut=MissingOut)
 
-famd  = pd.read_csv(args.inp_fam,header=None,delim_whitespace=True,names=["FID","IID","FAT","MAT","SEXFAM","CC"])
-#if args.lind :
-#   indtokepp=pd.read_csv(args.lind,delim_whitespace=True,header=None, names=["FID","IID"])
-#   famd=pd.merge(famd, indtokepp,how="inner",on=["FID","IID"])
+if args.form_out!=5 :
+  famd  = pd.read_csv(args.inp_fam,header=None,delim_whitespace=True,names=["FID","IID","FAT","MAT","SEXFAM","CC"])
+else :
+  datat=pd.read_csv(args.bimbam_ind, header=None, delim_whitespace=True, names=["FID"])
+  datat['numrow']=datat.index
+  datatmp=pd.merge(datat,datad, left_on='FID', right_on='FID',how='left')
+  nbna=datatmp['IID'].isna().sum()
+  nbtot=len(datat.index)
+  if nbna == nbtot :
+    datat2=datat['FID'].str.split('_', expand=True)  
+    datat2.columns= ['FID', 'IID']
+    datat2['numrow']=datat.index
+    datatmp=pd.merge(datat2,datad, left_on=['FID','IID'], right_on=['FID','IID'],how='left')
+  nbna=datatmp['IID'].isna().sum()
+  nbtot=len(datat.index)
+  if nbna == nbtot : 
+     print(datat)
+     print(datad)
+     print("--------------------------\n genetics data and phenotype are different FID IID-\n-------")
+     os._exit(2)
+  datatmp=datatmp.sort_index()
+  famd=datatmp[['FID','IID']]
+
+
+
+
 merge = pd.merge(famd,datad,how="left",suffixes=["_f",""],on=["FID","IID"])
 # for gemma
-if args.form_out == 1 : 
+if args.form_out == 1 or args.form_out==5 : 
    merge["intercept"]=1
    merge.reindex(["FID","IID","intercept"]+covariates)
    merge.to_csv(args.cov_out,sep=TAB,columns=["intercept"]+covariates,header=False,index=False,na_rep=MissingOut)

@@ -78,6 +78,7 @@ params.print_pca = 1
 params.genetic_map_file = ""
 params.list_vcf=""
 params.vcf_field="DS"
+params.min_scoreinfo=0.3
 params.vcf_minmac=1
 outfname = params.output_testing
 params.cut_maf=0.01
@@ -120,6 +121,11 @@ params.gemma_lmmopt = 4
 params.gemma_mat_rel = ""
 params.gemma_num_cores = 8
 params.gemma_loco = 0
+params.file_bimbam = ""
+
+params.dosage = 0 
+params.file_vcf=""
+
 params.pheno = "_notgiven_"
 
 //
@@ -170,6 +176,12 @@ params.grm_cutoff =  0.05
 params.covariates_type=""
 params.gcta_grmfile=""
 params.pheno_bin=0
+
+params.genotype_field="GP"
+params.score_imp="INFO"
+params.qctoolsv2_bin="qctool"
+params.bcftools_bin="bcftools"
+
 
 
 params.input_pat  = 'raw-GWA-data'
@@ -239,6 +251,30 @@ process getListeChro{
      cat $bim|awk '{print \$1}'|uniq|sort|uniq
      """
 }
+
+process formatvcfinbimbam{
+  label 'py3utils'
+  cpus params.max_plink_cores
+  memory params.plink_mem_req
+  time   params.big_time
+  input :
+     tuple val(chro), path(vcf)
+  publishDir "${params.output_dir}/format/bimbam", overwrite:true, mode:'copy'
+  output :
+     tuple path("${Ent}.bimbam"), path("${fileind}")
+  script :
+    headvcf=vcf.baseName
+    Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
+    chroparam=(chro!=-1) ?  " --regions $chro" : ""
+    fileind=Ent+".ind"
+    """
+    zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
+    ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    """
+}
+
+
+
 
 process subsample_snps{
  cpus max_plink_cores
@@ -326,9 +362,10 @@ workflow subsample_snp_rel{
   }
  plinkextractpos(ch_plkfile, snpfilers, ch_pheno)
  emit:
-   lisposrel=snpfilers
+   bed_pos_rel=snpfilers
    plk_rel=plinkextractpos.out
 }
+
 process getGemmaRelAll {
        label 'gemma'
        cpus params.gemma_num_cores
@@ -338,25 +375,17 @@ process getGemmaRelAll {
          tuple path(bed), path(bim), path(fam)
        publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
        output:
-          path("output/${base}.*XX.txt") 
+          tuple val(-1),path("output/${base}.*XX.txt") 
        script:
           base = bed.baseName
           famfile=base+".fam"
           """
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
           cat $famfile |awk '{print \$1"\t"\$2"\t"0.2}' > pheno
-          ${params.gemma_bin} -bfile $base  -gk ${params.gemma_relopt} -o $base -p pheno -n 3
+          ${params.gemma_bin} -bfile $base  -gk ${params.gemma_relopt} -o $base -p pheno -n 3 -km 2
           """
 }
-/*
-process dogemma {
-  label 'gemma'
-  cpus params.gemma_num_cores
-  memory params.gemma_mem_req
-  time params.big_time
 
-}
-*/
 process getGemmaRelChro{
        label 'gemma'
        cpus params.gemma_num_cores
@@ -375,10 +404,33 @@ process getGemmaRelChro{
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
           cat $famfile |awk '{print \$1"\t"\$2"\t"0.2}' > pheno
           plink -bfile $base --not-chr $chro --keep-allele-order --make-bed -out $newbase
-          ${params.gemma_bin} -bfile $newbase  -gk ${params.gemma_relopt} -o $newbase -p pheno -n 3 
+          ${params.gemma_bin} -bfile $newbase  -gk ${params.gemma_relopt} -o $newbase -p pheno -n 3 -km 2 
           rm -rf $newbase*
           """
 }
+
+process GemmaBimbamRel{
+       label 'gemma'
+       cpus params.gemma_num_cores
+       memory params.gemma_mem_req
+       time params.big_time
+       input:
+         tuple val(chro), path(bimbam), path(ind), path(listpos)
+       publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
+       output:
+          tuple val(chro),path("output/${base}.*XX.txt")
+       script:
+          tmp=bimbam.baseName
+          base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
+          outposbimbam="newbimbam"
+          """
+          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
+          cat $ind|awk '{print 0.2}' > pheno
+          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro
+          ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1
+          """
+}
+
 
 process doGemma{
        label 'gemma'
@@ -425,9 +477,41 @@ process doGemma{
           rm ${newbase}.bed ${newbase}.bim ${newbase}.fam
           """
      }
+process doGemmabimbam{
+       label 'gemma'
+       maxForks params.max_forks
+       cpus params.gemma_num_cores
+       memory params.gemma_mem_req
+       time   params.big_time
+       input:
+         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(covariates),path(rsfilelist), val(this_pheno), val(outdir)
+       publishDir "${params.output_dir}/$outdir", overwrite:true, mode:'copy'
+       output:
+         tuple val(our_pheno),val("${params.input_pat}"),path("${dir_gemma}/${out}.assoc.txt"), emit :resgemma
+         path("${dir_gemma}/${out}.log.txt"), emit : log
+       script:
+          our_pheno2         = this_pheno.replaceAll(/^[0-9]+@@@/,"")
+          our_pheno3         = our_pheno2.replaceAll(/\/np.\w+/,"")
+          our_pheno          = this_pheno.replaceAll(/_|\/np.\w+/,"-").replaceAll(/[0-9]+@@@/,"")
+          gemma_covariate    = "${our_pheno}.gemma_cov"
+          phef               = "${our_pheno}_n.phe"
+          covariate_option = (params.covariates) ?  " --cov_list ${params.covariates} " : "" 
+          out                = (chro!=-1) ? "$our_pheno-$chro" : "$our_pheno"
+          covar_opt_gemma    =  (params.covariates) ?  " -c $gemma_covariate " : ""
+          dir_gemma          =  "gemma"
+
+          """
+          all_covariate.py --data  $covariates --bimbam_ind  $bimbam_ind $covariate_option --cov_out $gemma_covariate \
+          --pheno $our_pheno2 --phe_out ${phef} --form_out 5
+          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
+          ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm 1  -n 1 -p $phef -o $out -maf ${params.cut_maf}
+          mv output ${dir_gemma}
+          """
+     }
+
 
      process doMergeGemma{
-             input :
+            input :
                tuple val(this_pheno),val(base),path(list_file)  
             publishDir "${params.output_dir}/gemma", overwrite:true, mode:'copy'
             output :
@@ -444,6 +528,29 @@ process doGemma{
                 cat $fnames | grep -v "p_wald" >> $out
                 """
         }
+    process splitbimbamchro{
+        input :
+          tuple val(chro), path(bimbam), path(bimbam_ind)
+         output :
+
+          tuple val(chro), path("$newfile"), path(bimbam_ind)
+        script :
+          newfile = bimbam.baseName+"_" + chro
+          """
+          listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile 
+          """
+    }
+    process get_chrovcf{
+       input:
+          file(vcf)
+       output :
+           tuple val(stdout) ,file(vcf)
+       script :
+          """
+          chro=`zcat $vcf|head -1000|grep -v "#"|awk '{print \$1}'|uniq`
+          echo \$chro 
+          """
+    }
 
 
 
@@ -456,19 +563,49 @@ workflow gwasgemma{
    filepheno
    filers
    listpheno
+   bed_file_rel
  main :
    listchro_ch=listchro.flatMap{ list_str -> list_str.split() }
-   if(params.gemma_loco==0){
-     getGemmaRelAll(ch_plkfile_rel) 
-     doGemma(channel getGemmaRelChro.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
-   }else{
-    getGemmaRelChro(ch_plkfile_rel.combine(listchro_ch))
-    doGemma(getGemmaRelChro.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/chro/')))
-    doMergeGemma(doGemma.out.resgemma.groupTuple())
+   if(params.dosage==1){
+     if(params.file_bimbam!=""){
+         bimbamfile=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+     }else if(params.file_vcf!=""){
+         formatvcfinbimbam(channel.from(-1).combine(channel.fromPath(params.file_vcf, checkIfExists:true)))
+         bimbamfile=formatvcfinbimbam.out
+     }else(params.listfile_bimbam!=""){
+          listbimbamfile_ch=file(params.listfile_bimbam).readLines().each{it.split() -> [it[0],channel.fromPath(it[1])}
 
+     }else(params.listfile_vcf){
+         listvcf_ch=get_chrovcf(channel.frompath(file(params.listfile_vcf).readLines()))
+         formatvcfinbimbam(listvcf_ch.out)
+     }
+     
+     if(params.gemma_loco==0){
+         GemmaBimbamRel(channel.from("-1").combine(bimbamfile).combine(bed_file_rel))
+         doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
+     }else{
+         GemmaBimbamRel(listchro_ch.combine(bimbamfile).combine(bed_file_rel))
+         if(params.file_bimbam!='' | params.file_vcf!=""){
+            splitbimbamchro(listchro_ch.combine(bimbamfile))
+            doGemmabimbam(GemmaBimbamRel.out.join(splitbimbamchro.out).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/chro')))
+     doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
+         }
+     }
+   }else{
+    if(params.gemma_loco==0){
+      getGemmaRelAll(ch_plkfile_rel)
+      doGemma(getGemmaRelAll.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
+      ressummstat=doGemma.out
+    }else{
+     getGemmaRelChro(ch_plkfile_rel.combine(listchro_ch))
+     doGemma(getGemmaRelChro.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/chro/')))
+     doMergeGemma(doGemma.out.resgemma.groupTuple())
+     ressummstat=doMergeGemma.out
    }
+ }
 
 }
+
 
 workflow {
  /*bedfile*/
@@ -480,7 +617,8 @@ workflow {
  subsample_snp_rel(plinkextractind.out.filterind,phenofile)
  getListeChro(plinkextractind.out.filterind)
  listpheno = newNamePheno(params.pheno)
- gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, listpheno)
+ gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, listpheno, subsample_snp_rel.out.bed_pos_rel)
+ 
 
 
 }
