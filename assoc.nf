@@ -277,6 +277,7 @@ process formatvcfinbimbam{
   output :
      tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
   script :
+    println(chro + ' '+vcf)
     headvcf=vcf.baseName
     Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
     chroparam=(chro!=-1) ?  " --regions $chro" : ""
@@ -620,7 +621,7 @@ workflow gwasgemma{
          formatvcfinbimbam(get_chrovcf.out.chro_vcf)
          mergebimbamrel(formatvcfinbimbam.out.flatMap{it[1]}.collect(), formatvcfinbimbam.out.flatMap{it[2]}.collect(),bed_file_rel)
          bimbamfilerel=mergebimbamrel.out
-         bimbamfile=formatvcfinbimbam.out
+         if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam.out.flatMap{it.removeAt(0)}
      }else{
     println "No file gave for dosage, vcf imputation or bimbam file";
     System.exit(-2);
