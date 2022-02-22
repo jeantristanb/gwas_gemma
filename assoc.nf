@@ -32,7 +32,7 @@ nextflow.enable.dsl=2
 
 def helps = [ 'help' : 'help' ]
 
-allowed_params = ["bfile","input_dir","input_pat","output","output_dir","data","plink_mem_req","covariates","gemma_num_cores","gemma_mem_req","gemma","linear","logistic","assoc","fisher", "work_dir", "scripts", "max_forks", "high_ld_regions_fname", "sexinfo_available", "cut_het_high", "cut_het_low", "cut_diff_miss", "cut_maf", "cut_mind", "cut_geno", "cut_hwe", "pi_hat", "case_control", "case_control_col", "phenotype", "pheno_col", "batch", "batch_col", "samplesize", "strandreport", "manifest", "idpat", "accessKey", "access-key", "secretKey", "secret-key", "region", "other_mem_req", "max_plink_cores", "pheno","big_time","thin", "gemma_mat_rel","print_pca", "listsnps_buildrelat","genetic_map_file", "rs_list","adjust","bootStorageSize","shared-storage-mount","mperm","sharedStorageMount","max-instances","maxInstances","boot-storage-size","sharedStorageMound","instance-type","instanceType","AMI", "gemma_multi",  "saige"]
+allowed_params = ["bfile","input_dir","input_pat","output","output_dir","data","plink_mem_req","covariates","gemma_num_cores","gemma_mem_req","gemma","linear","logistic","assoc","fisher", "work_dir", "scripts", "max_forks", "high_ld_regions_fname", "sexinfo_available", "cut_het_high", "cut_het_low", "cut_diff_miss", "cut_maf", "cut_mind", "cut_geno", "cut_hwe", "pi_hat", "case_control", "case_control_col", "phenotype", "pheno_col", "batch", "batch_col", "samplesize", "strandreport", "manifest", "idpat", "accessKey", "access-key", "secretKey", "secret-key", "region", "other_mem_req", "max_plink_cores", "pheno","big_time","thin", "gemma_mat_rel","print_pca", "listsnps_buildrelat","genetic_map_file", "rs_list","adjust","bootStorageSize","shared-storage-mount","mperm","sharedStorageMount","max-instances","maxInstances","boot-storage-size","sharedStorageMound","instance-type","instanceType","AMI", "gemma_multi",  "saige", 'gemma_loco', 'file_vcf', 'listfile_vcf', 'dosage']
 
 allowed_params_rel=["snps_exclude_rel", "snps_include_rel", "listsnps_buildrelat", "sample_snps_rel",  "thin_snp_rel", "cut_maf_rel"]
 allowed_params+=allowed_params_rel
@@ -122,6 +122,8 @@ params.gemma_mat_rel = ""
 params.gemma_num_cores = 8
 params.gemma_loco = 0
 params.file_bimbam = ""
+params.listfile_bimbam = ""
+params.listfile_vcf= ""
 
 params.dosage = 0 
 params.file_vcf=""
@@ -241,11 +243,23 @@ process plinkextractind{
   """
 }
 
+process format_summarystat_gemmadosage{
+ input :
+     path(filegemma)
+ output :
+     path(filegemmaformat)
+ script :
+     """
+     format_gemmabimbam.py $filegemma $filegemmaformat
+     """
+
+}
+
 process getListeChro{
   input :
    tuple path(bed), path(bim), path(fam)
   output :
-     stdout 
+     stdout
   script:
      """
      cat $bim|awk '{print \$1}'|uniq|sort|uniq
@@ -261,7 +275,7 @@ process formatvcfinbimbam{
      tuple val(chro), path(vcf)
   publishDir "${params.output_dir}/format/bimbam", overwrite:true, mode:'copy'
   output :
-     tuple path("${Ent}.bimbam"), path("${fileind}")
+     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
   script :
     headvcf=vcf.baseName
     Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
@@ -269,6 +283,7 @@ process formatvcfinbimbam{
     fileind=Ent+".ind"
     """
     zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
+    bcftools index $vcf
     ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
     """
 }
@@ -532,7 +547,6 @@ process doGemmabimbam{
         input :
           tuple val(chro), path(bimbam), path(bimbam_ind)
          output :
-
           tuple val(chro), path("$newfile"), path(bimbam_ind)
         script :
           newfile = bimbam.baseName+"_" + chro
@@ -542,17 +556,32 @@ process doGemmabimbam{
     }
     process get_chrovcf{
        input:
-          file(vcf)
+          path(vcf)
        output :
-           tuple val(stdout) ,file(vcf)
+           tuple env(chro), path(vcf), emit : chro_vcf
        script :
           """
           chro=`zcat $vcf|head -1000|grep -v "#"|awk '{print \$1}'|uniq`
-          echo \$chro 
           """
     }
 
-
+process mergebimbamrel{
+  input : 
+    path(listbimam)
+    path(listind)
+    path(filepos) 
+  output :
+    tuple path(subbimbam), path(subbimbamnd)
+  script :
+    allbimbam=listbimam.join(',')
+    subbimbam='allrelpos.bimbam'
+    subbimbamnd='allrelpos.ind'
+     """
+     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam
+     fileind=`ls *.ind|head -1`
+     cp \$fileind  $subbimbamnd
+     """
+}
 
 
 workflow gwasgemma{
@@ -569,28 +598,47 @@ workflow gwasgemma{
    if(params.dosage==1){
      if(params.file_bimbam!=""){
          bimbamfile=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+         bimbamfilerel=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
      }else if(params.file_vcf!=""){
          formatvcfinbimbam(channel.from(-1).combine(channel.fromPath(params.file_vcf, checkIfExists:true)))
-         bimbamfile=formatvcfinbimbam.out
-     }else(params.listfile_bimbam!=""){
-          listbimbamfile_ch=file(params.listfile_bimbam).readLines().each{it.split() -> [it[0],channel.fromPath(it[1])}
-
-     }else(params.listfile_vcf){
-         listvcf_ch=get_chrovcf(channel.frompath(file(params.listfile_vcf).readLines()))
-         formatvcfinbimbam(listvcf_ch.out)
-     }
-     
-     if(params.gemma_loco==0){
-         GemmaBimbamRel(channel.from("-1").combine(bimbamfile).combine(bed_file_rel))
-         doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
-     }else{
-         GemmaBimbamRel(listchro_ch.combine(bimbamfile).combine(bed_file_rel))
-         if(params.file_bimbam!='' | params.file_vcf!=""){
-            splitbimbamchro(listchro_ch.combine(bimbamfile))
-            doGemmabimbam(GemmaBimbamRel.out.join(splitbimbamchro.out).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/chro')))
-     doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
+         if(params.gemma_loco==1){
+            splitbimbamchro(listchro_ch.combine(formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()))
+            bimbamfile=splitbimbamchro.out
+            bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
+         }else{
+         bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
+         bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
          }
+     }else if(params.listfile_bimbam!=""){
+          listbimbamfile_ch_rel=channel.fromPath(file(params.listfile_bimbam).readLines().flatMap{it.split()[1]})
+          bimbamfile=channel.fromPath(file(params.listfile_bimbam).readLines().each{it.split() -> [it[0],channel.fromPath(it[1])]})
+          mergebimbamrel(listbimbamfile_ch_rel.collect(), bed_file_rel)
+          bimbamfilerel=mergebimbamrel.out
+          bimbamfile=listbimbamfile_ch_rel
+     }else if(params.listfile_vcf!=""){
+         get_chrovcf(channel.fromPath(file(params.listfile_vcf, checkIfExists:true).readLines(), checkIfExists:true))
+         formatvcfinbimbam(get_chrovcf.out.chro_vcf)
+         mergebimbamrel(formatvcfinbimbam.out.flatMap{it[1]}.collect(), formatvcfinbimbam.out.flatMap{it[2]}.collect(),bed_file_rel)
+         bimbamfilerel=mergebimbamrel.out
+         bimbamfile=formatvcfinbimbam.out
+     }else{
+    println "No file gave for dosage, vcf imputation or bimbam file";
+    System.exit(-2);
+
+    }
+     listpheno=Channel.from(listpheno)  
+     if(params.gemma_loco==0){
+         GemmaBimbamRel(channel.from("-1").combine(bimbamfilerel).combine(bed_file_rel))
+//         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(covariates),path(rsfilelist), val(this_pheno), val(outdir)
+
+         doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
+         doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
+     }else{
+            GemmaBimbamRel(listchro_ch.combine(bimbamfilerel).combine(bed_file_rel))
+            doGemmabimbam(GemmaBimbamRel.out.join(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/chro')))
+            doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
      }
+    format_summarystat_gemmadosage(doMergeGemma.out)
    }else{
     if(params.gemma_loco==0){
       getGemmaRelAll(ch_plkfile_rel)
@@ -618,8 +666,6 @@ workflow {
  getListeChro(plinkextractind.out.filterind)
  listpheno = newNamePheno(params.pheno)
  gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, listpheno, subsample_snp_rel.out.bed_pos_rel)
- 
-
 
 }
 
