@@ -5,7 +5,7 @@ filebimbamread=sys.argv[1]
 filebimbamwrite=sys.argv[2]
 
 readdatai=open(filebimbamread)
-writedata=open(filebimbamread, 'w')
+writedata=open(filebimbamwrite, 'w')
 
 writedata.write(readdatai.readline())
 
