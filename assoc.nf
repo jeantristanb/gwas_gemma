@@ -28,6 +28,10 @@ nextflow.enable.dsl=2
   }
 
 
+def strmem(val){
+ return val as nextflow.util.MemoryUnit
+}
+
 
 
 def helps = [ 'help' : 'help' ]
@@ -70,6 +74,8 @@ params.queue      = 'batch'
 params.work_dir   = "$HOME/h3agwas"
 params.input_dir  = "${params.work_dir}/input"
 params.output_dir = "${params.work_dir}/output"
+params.output_pat= "output"
+params.bfile= ""
 params.output_testing = "cleaned"
 params.thin       = ""
 params.covariates = ""
@@ -118,6 +124,7 @@ params.saige=0
 
 params.gemma_multi=0
 params.gemma_mem_req = "6GB"
+params.gemma_mem_req_rel = ""
 params.gemma_relopt = 1
 params.gemma_lmmopt = 4
 params.gemma_mat_rel = ""
@@ -138,6 +145,10 @@ params.saige_bin_spatest="/usr/local/bin/step2_SPAtests.R"
 params.saige_loco=1
 params.saige_mem_req='10GB'
 params.saige_num_cores=10
+if(params.gemma_mem_req_rel==""){
+params.gemma_mem_req_rel = params.gemma_mem_req
+}
+
 
 if (params.pheno == "_notgiven_") {
   println "No phenotype given -- set params.pheno";
@@ -183,8 +194,20 @@ params.pheno_bin=0
 
 params.genotype_field="GP"
 params.score_imp="INFO"
+params.statfreq_vcf="%AN %AC"
 params.qctoolsv2_bin="qctool"
 params.bcftools_bin="bcftools"
+
+
+/*params for format*/
+params.file_listvcf=""
+
+
+params.genetic_maps=""
+params.do_stat=true
+params.unzip_zip=0
+params.unzip_password=""
+params.reffasta=""
 
 
 
@@ -206,7 +229,7 @@ bfile=""
 if(params.input_dir!="" && params.input_pat!=""){
  bfile=params.input_dir+"/"+params.input_pat
 }else{
- if(params.bfile==""){
+ if(params.bfile=="" && params.listfile_vcf!="" && params.listfile_vcf!=""){
   println("bfile params or input_dir and output_dir not initialise")
  }else{
   bfile=params.bfile
@@ -388,7 +411,9 @@ workflow subsample_snp_rel{
 process getGemmaRelAll {
        label 'gemma'
        cpus params.gemma_num_cores
-       memory params.gemma_mem_req
+       memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
+       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxRetries 10
        time params.big_time
        input:
          tuple path(bed), path(bim), path(fam)
@@ -408,7 +433,9 @@ process getGemmaRelAll {
 process getGemmaRelChro{
        label 'gemma'
        cpus params.gemma_num_cores
-       memory params.gemma_mem_req
+       memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
+       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxRetries 10
        time params.big_time
        input:
          tuple path(bed), path(bim), path(fam), val(chro)
@@ -428,11 +455,14 @@ process getGemmaRelChro{
           """
 }
 
+
 process GemmaBimbamRel{
        label 'gemma'
        cpus params.gemma_num_cores
-       memory params.gemma_mem_req
        time params.big_time
+       memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
+       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxRetries 10
        input:
          tuple val(chro), path(bimbam), path(ind), path(listpos)
        publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
@@ -455,7 +485,9 @@ process doGemma{
        label 'gemma'
        maxForks params.max_forks
        cpus params.gemma_num_cores
-       memory params.gemma_mem_req
+       memory { strmem(params.gemma_mem_req) + 5.GB * (task.attempt -1) }
+       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxRetries 10
        time   params.big_time
        input:
          tuple val(chro), path(rel),path(covariates), path(bed), path(bim), path(fam), path(rsfilelist), val(this_pheno), val(outdir)
@@ -500,8 +532,10 @@ process doGemmabimbam{
        label 'gemma'
        maxForks params.max_forks
        cpus params.gemma_num_cores
-       memory params.gemma_mem_req
        time   params.big_time
+       memory { strmem(params.gemma_mem_req) + 5.GB * (task.attempt -1) }
+       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxRetries 10
        input:
          tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(covariates),path(rsfilelist), val(this_pheno), val(outdir)
        publishDir "${params.output_dir}/$outdir", overwrite:true, mode:'copy', pattern: '*.log'
@@ -730,9 +764,19 @@ workflow cleanvcfwf{
   listfilevcf= listfilevcf
 }
 
+
+include {format_vcfinplk} from './workflow/convert_file.nf'
+
+
 workflow {
  /*bedfile*/
- bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))
+ if(bfile!=""){
+   bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))
+ }else{
+ println "no input plink format, used vcf file(s) to format in plink"
+  format_vcfinplk()
+  bedfileI=format_vcfinplk.out.plk
+ }
  if(params.rs_list=="")rsfile=Channel.fromPath("${dummy_dir}/06", checkIfExists:true)
  else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
  phenofile=Channel.fromPath(params.data, checkIfExists:true)
