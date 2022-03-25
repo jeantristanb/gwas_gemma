@@ -124,7 +124,7 @@ params.saige=0
 
 params.gemma_multi=0
 params.gemma_mem_req = "6GB"
-params.gemma_mem_req_rel = ""
+params.gemma_mem_req_rel = "6GB"
 params.gemma_relopt = 1
 params.gemma_lmmopt = 4
 params.gemma_mat_rel = ""
@@ -229,8 +229,9 @@ bfile=""
 if(params.input_dir!="" && params.input_pat!=""){
  bfile=params.input_dir+"/"+params.input_pat
 }else{
- if(params.bfile=="" && params.listfile_vcf!="" && params.listfile_vcf!=""){
+ if(params.bfile=="" && (params.file_vcf!="" || params.listfile_vcf!="")){
   println("bfile params or input_dir and output_dir not initialise")
+  bfile=params.bfile
  }else{
   bfile=params.bfile
  }
@@ -273,7 +274,7 @@ process format_summarystat_gemmadosage{
      tuple val(pheno) ,path(filegemma)
  output :
      tuple val(pheno),path(filegemmaformat)
- //publishDir "${params.output_dir}/gemma/", overwrite:true, mode:'copy'
+ //publishDir "${params.output_dir}/gemma/", mode:'copy'
  script :
      filegemmaformat=pheno+"_format.gemma"
      """
@@ -300,7 +301,7 @@ process formatvcfinbimbam{
   time   params.big_time
   input :
      tuple val(chro), path(vcf)
-  publishDir "${params.output_dir}/format/bimbam", overwrite:true, mode:'copy'
+  publishDir "${params.output_dir}/format/bimbam", mode:'copy'
   output :
      tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
   script :
@@ -329,7 +330,7 @@ process subsample_snps{
   path("${outfile}.prune.in"), emit: subsample_snps_list
  script:
   bfile=bed.baseName
-  outfile="indep_pairwise"
+  outfile="sub_indep_pairwise"
   rangeexclude=(params.snps_exclude_rel=="") ? "" : " --exclude range $snp_exclude_bed "
   rangeinclude=(params.snps_include_rel=="") ? "" : " --extract range $snp_include_bed "
   maf=(params.cut_maf_rel=="") ? "" : " --maf ${params.cut_maf_rel}"
@@ -411,13 +412,14 @@ workflow subsample_snp_rel{
 process getGemmaRelAll {
        label 'gemma'
        cpus params.gemma_num_cores
+       maxForks params.max_forks
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
-       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        time params.big_time
        input:
          tuple path(bed), path(bim), path(fam)
-       publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
+       publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
           tuple val(-1),path("output/${base}.*XX.txt") 
        script:
@@ -434,12 +436,13 @@ process getGemmaRelChro{
        label 'gemma'
        cpus params.gemma_num_cores
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
-       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+       maxForks params.max_forks
        maxRetries 10
        time params.big_time
        input:
          tuple path(bed), path(bim), path(fam), val(chro)
-       publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
+       publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
           tuple val(chro), path("output/${newbase}.*XX.txt")
        script:
@@ -461,11 +464,12 @@ process GemmaBimbamRel{
        cpus params.gemma_num_cores
        time params.big_time
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
-       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       maxForks params.max_forks
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        input:
          tuple val(chro), path(bimbam), path(ind), path(listpos)
-       publishDir "${params.output_dir}/gemma/rel", overwrite:true, mode:'copy'
+       publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
           tuple val(chro),path("output/${base}.*XX.txt")
        script:
@@ -486,12 +490,12 @@ process doGemma{
        maxForks params.max_forks
        cpus params.gemma_num_cores
        memory { strmem(params.gemma_mem_req) + 5.GB * (task.attempt -1) }
-       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        time   params.big_time
        input:
-         tuple val(chro), path(rel),path(covariates), path(bed), path(bim), path(fam), path(rsfilelist), val(this_pheno), val(outdir)
-       publishDir "${params.output_dir}/$outdir", overwrite:true, mode:'copy', pattern: '*.log'
+         tuple val(chro), path(rel),path(data), path(bed), path(bim), path(fam), path(rsfilelist), val(this_pheno), val(outdir)
+       publishDir "${params.output_dir}/$outdir",  mode:'copy', pattern: '*.log'
        output:
          tuple val(our_pheno),path("${dir_gemma}/${out}.assoc.txt"), emit :resgemma
          path("${dir_gemma}/${out}.log.txt"), emit : log
@@ -515,7 +519,7 @@ process doGemma{
           chroptionplk       = 	(chro==-1) ? "" : "--chr $chro"
           covariate_option = (params.covariates) ?  " --cov_list ${params.covariates} " : "" 
           """
-          list_ind_nomissing.py --data $covariates --inp_fam $inp_fam $covariate_option --pheno $our_pheno3 --dataout $data_nomissing \
+          list_ind_nomissing.py --data $data --inp_fam $inp_fam $covariate_option --pheno $our_pheno3 --dataout $data_nomissing \
                                 --lindout $list_ind_nomissing
           gemma_relselind.py  --rel $rel --inp_fam $inp_fam --relout $rel_matrix --lind $list_ind_nomissing
           plink --keep-allele-order --bfile $base --keep $list_ind_nomissing --make-bed --out $newbase  ${rs_plk_gem} $chroptionplk
@@ -534,11 +538,11 @@ process doGemmabimbam{
        cpus params.gemma_num_cores
        time   params.big_time
        memory { strmem(params.gemma_mem_req) + 5.GB * (task.attempt -1) }
-       errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        input:
-         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(covariates),path(rsfilelist), val(this_pheno), val(outdir)
-       publishDir "${params.output_dir}/$outdir", overwrite:true, mode:'copy', pattern: '*.log'
+         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(data),path(rsfilelist), val(this_pheno), val(outdir)
+       publishDir "${params.output_dir}/$outdir", mode:'copy', pattern: '*.log'
        output:
          tuple val(our_pheno),path("${dir_gemma}/${out}.assoc.txt"), emit :resgemma
          path("${dir_gemma}/${out}.log.txt"), emit : log
@@ -555,7 +559,7 @@ process doGemmabimbam{
           dir_gemma          =  "gemma"
 
           """
-          all_covariate.py --data  $covariates --bimbam_ind  $bimbam_ind $covariate_option --cov_out $gemma_covariate \
+          all_covariate.py --data  $data --bimbam_ind  $bimbam_ind $covariate_option --cov_out $gemma_covariate \
           --pheno $our_pheno2 --phe_out ${phef} --form_out 5
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
           ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm 1  -n 1 -p $phef -o $out -maf ${params.cut_maf}
@@ -567,7 +571,7 @@ process doGemmabimbam{
      process doMergeGemma{
             input :
                tuple val(this_pheno),path(list_file)  
-            //publishDir "${params.output_dir}/gemma", overwrite:true, mode:'copy'
+            //publishDir "${params.output_dir}/gemma", mode:'copy'
             output :
                 tuple val(our_pheno2), path("$out") 
             script :
@@ -622,7 +626,7 @@ process mergebimbamrel{
 process getreport{
   input :
     tuple val(pheno), path(filegwas), val(outputdir)
-  publishDir "${params.output_dir}/$outputdir/", overwrite:true, mode:'copy'
+  publishDir "${params.output_dir}/$outputdir/", mode:'copy'
   output :
     file(filegwas) 
   script:
@@ -630,6 +634,39 @@ process getreport{
    echo $filegwas
    """
 }
+
+process computeN_plink{
+  label 'R' 
+  cpus params.max_plink_cores
+  input :
+    tuple path(data), path(bed), path(bim), path(fam), val(this_pheno),val(covar)
+  output :
+     tuple val(our_pheno2),file("${headout}.frq")
+  script :
+    our_pheno2          = this_pheno.replaceAll(/_|\/np.\w+/,"-").replaceAll(/[0-9]+@@@/,"")
+    our_pheno          = this_pheno.replaceAll(/[0-9]+@@@/,"")
+    headout=this_pheno+'_statn'
+    plkf=bed.baseName
+    covar = (covar=="") ? "" : " --covar $covar "
+
+    """
+    formatpheno_plink.r --data $data --pheno ${our_pheno} --out pheno_plink --binary 0  $covar
+    plink -bfile $plkf --keep pheno_plink --freq -out $headout --keep-allele-order --threads ${params.max_plink_cores}
+    """
+}
+
+process addNtoStatGemma{
+  input :
+    tuple val(our_pheno), path(filestat), path(fileN)
+  output :
+    tuple val(our_pheno), path(newfilestat)
+  script :
+    newfilestat = "${our_pheno}_withN.gemma"
+    """
+    addn_statgwas.py --file_stat $filestat --file_freq $fileN --gwas_chr chr --gwas_ps ps --gwas_rs rs --out $newfilestat
+    """
+}
+
 
 
 workflow gwasgemma{
@@ -643,6 +680,7 @@ workflow gwasgemma{
    bed_file_rel
    filevcf
    listfilevcf
+   covar
  main :
    listchro_ch=listchro.flatMap{ list_str -> list_str.split() }
    if(params.dosage==1){
@@ -691,10 +729,8 @@ workflow gwasgemma{
     System.exit(-2);
 
     }
-     listpheno=Channel.from(listpheno)  
      if(params.gemma_loco==0){
          GemmaBimbamRel(channel.from("-1").combine(bimbamfilerel).combine(bed_file_rel))
-//         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(covariates),path(rsfilelist), val(this_pheno), val(outdir)
 
          doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
          doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
@@ -717,14 +753,16 @@ workflow gwasgemma{
      ressummstat=doMergeGemma.out
    }
  }
- getreport(ressummstat.combine(channel.of( 'gemma')))
+ computeN_plink(filepheno.combine(ch_plkfile).combine(listpheno).combine(covar))
+ addNtoStatGemma(ressummstat.join(computeN_plink.out))
+ getreport(addNtoStatGemma.out.combine(channel.of( 'gemma')))
 
 }
 process cleanvcf{
   label 'py3utils'
    input :
     tuple path(filevcf), path(IndTokeep)
-  publishDir "${params.output_dir}/format/vcffilter", overwrite:true, mode:'copy'
+  publishDir "${params.output_dir}/format/vcffilter", mode:'copy'
   output :
     path(newfilevcf)
   script : 
@@ -773,7 +811,11 @@ workflow {
  if(bfile!=""){
    bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))
  }else{
- println "no input plink format, used vcf file(s) to format in plink"
+  println "no input plink format, used vcf file(s) to format in plink"
+  if(params.reffasta=="" || params.reffasta==true){
+   println("to format vcf in plink need a fasta file : args --reffasta null")
+      exit 1
+  }
   format_vcfinplk()
   bedfileI=format_vcfinplk.out.plk
  }
@@ -785,7 +827,7 @@ workflow {
  getListeChro(plinkextractind.out.filterind)
  listpheno = newNamePheno(params.pheno)
  cleanvcfwf()
- gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, listpheno, subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf)
+ gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, channel.from(listpheno), subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, channel.from(params.covariates))
 
 }
 

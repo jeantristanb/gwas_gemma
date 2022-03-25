@@ -2,7 +2,7 @@
 process unzipdir{
   input :
      path(vcfzip) 
-  publishDir "${params.output_dir}/format/vcfi", overwrite:true, mode:'copy'
+  publishDir "${params.output_dir}/format/vcfi",  mode:'copy'
   output :
    path("*.vcf.gz"), emit : vcf
    path("*.gz"), emit: gzip
@@ -32,7 +32,7 @@ process dostat{
  memory params.plink_mem_req
  input :
     path(allstat) 
- publishDir "${params.output_dir}/format/statistics/", overwrite:true, mode:'copy'
+ publishDir "${params.output_dir}/format/statistics/",  mode:'copy'
  output :
    path("${fileout}*")
  script :
@@ -50,7 +50,7 @@ process formatvcfscore{
   time   params.big_time
   input :
      tuple path(ref),path(vcf)
-  publishDir "${params.output_dir}/format/bcf_filter", overwrite:true, mode:'copy', pattern: "*.bcf"
+  publishDir "${params.output_dir}/format/bcf_filter",  mode:'copy', pattern: "*.bcf"
   output :
      tuple path("${Ent}.bed"), path("${Ent}.bim"), path("${Ent}.fam"), emit: plk 
      path("${Ent}.bim"), emit: bim
@@ -74,7 +74,7 @@ process formatvcfscore{
 process convertbcf_invcf{
   label 'py3utils'
   time   params.big_time
-  publishDir "${params.output_dir}/format/vcf_filter", overwrite:true, mode:'copy', pattern: "*.vcf.gz"
+  publishDir "${params.output_dir}/format/vcf_filter",  mode:'copy', pattern: "*.vcf.gz"
   input :
       tuple val(Ent), file(bcf) 
    output :
@@ -182,16 +182,15 @@ process MergePlink{
   time   params.big_time
   input :
        path(lplk)
-       val(hplk) 
+       //val(hplk)
   output :
-     tuple path("${params.output_pat}.bed"), path("${params.output_pat}.bim"),path("${params.output_pat}.fam")
+     tuple path("${params.output_pat}_merge.bed"), path("${params.output_pat}_merge.bim"),path("${params.output_pat}_merge.fam")
   script :
-       hplkFirst=hplk[0]
-       hplk.remove(0)
-       hplk2=hplk.join(',')
+       hplk2=lplk.join(',')
        """
-       echo $hplk2|awk -F\',\' \'{for(Cmt=1;Cmt<=NF;Cmt++)print \$Cmt"\\n"}\' > fileplk
-       plink --bfile $hplkFirst --keep-allele-order --threads ${params.max_plink_cores} --merge-list fileplk --make-bed --out ${params.output_pat}
+       echo $hplk2 | awk -F',' '{for(Cmt=1;Cmt<=NF;Cmt++)print \$Cmt}' | sed 's/\\.[^.]*\$//'  | sort |uniq |sed '1d'> fileplk
+       hplkFirst=`echo $hplk2 | awk -F',' '{for(Cmt=1;Cmt<=NF;Cmt++)print \$Cmt}' | sed 's/\\.[^.]*\$//'  | sort |uniq |head -1`
+       plink --bfile \$hplkFirst --keep-allele-order --threads ${params.max_plink_cores} --merge-list fileplk --make-bed --out ${params.output_pat}"_merge"
        """
 }
 
@@ -200,7 +199,7 @@ process check_names_plkconvert{
    input :
        tuple path(bed), path(bim), path(fam)
        path(data)
-   publishDir "${params.output_dir}/format/plink/", overwrite:true, mode:'copy'
+   publishDir "${params.output_dir}/format/plink/",  mode:'copy'
    output : 
        tuple path("${newplk}.bed"), path("${newplk}.bim"), path("${newplk}.fam")
    script :
@@ -222,7 +221,8 @@ workflow format_vcfinplk{
      list_vcf=unzipdir.out.vcf
    }else{
     if(params.listfile_vcf!=""){
-       list_vcf=Channel.fromPath(file(params.file_listvcf,  checkIfExists:true).readLines(), checkIfExists:true)
+       println("used a list of vcf")
+       list_vcf=Channel.fromPath(file(params.listfile_vcf,  checkIfExists:true).readLines(), checkIfExists:true)
     }else if(params.file_vcf!=''){
        list_vcf = Channel.fromPath(params.file_vcf, checkIfExists:true)
     }
@@ -233,7 +233,7 @@ workflow format_vcfinplk{
    }
  if(params.reffasta=="" || params.reffasta==true){
   println("to format file need a fasta file : args --reffasta null")
-  System.exit(-2);
+      exit 1
  }
   ref_ch=Channel.fromPath(params.reffasta, checkIfExists:true)
   if(params.min_scoreinfo>0){
@@ -252,10 +252,10 @@ workflow format_vcfinplk{
     headplink=AddedCM.out.plkHead.first()
   }else{
     listplink=TransformRsDup.out.plk.collect()
-    headplink=TransformRsDup.out.plkHead.first()
+    //headplink=TransformRsDup.out.plkHead.collect()
   }
   if(params.listfile_vcf!=""){
-    MergePlink(listplink, headplink)
+    MergePlink(listplink)
     plk_merge=MergePlink.out
   }else{
     plk_merge=listplink
