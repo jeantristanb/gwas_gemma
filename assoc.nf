@@ -208,6 +208,7 @@ params.do_stat=true
 params.unzip_zip=0
 params.unzip_password=""
 params.reffasta=""
+params.other_process_mem_req="10GB"
 
 
 
@@ -651,183 +652,187 @@ process computeN_plink{
 
     """
     formatpheno_plink.r --data $data --pheno ${our_pheno} --out pheno_plink --binary 0  $covar
-    plink -bfile $plkf --keep pheno_plink --freq -out $headout --keep-allele-order --threads ${params.max_plink_cores}
+    plink -bfile $plkf --keep pheno_plink --freq -out $headout"_tmp" --keep-allele-order --threads ${params.max_plink_cores}
+    merge_freqandbim.py  --freq  ${headout}_tmp.frq --bim $bim --out ${headout}.frq
     """
 }
 
 process addNtoStatGemma{
-  input :
-    tuple val(our_pheno), path(filestat), path(fileN)
-  output :
-    tuple val(our_pheno), path(newfilestat)
-  script :
-    newfilestat = "${our_pheno}_withN.gemma"
-    """
-    addn_statgwas.py --file_stat $filestat --file_freq $fileN --gwas_chr chr --gwas_ps ps --gwas_rs rs --out $newfilestat
-    """
-}
+           errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+	   memory { strmem(other_mem_req) + 5.GB * (task.attempt -1) }
+          maxRetries 10
+	  input :
+	    tuple val(our_pheno), path(filestat), path(fileN)
+	  output :
+	    tuple val(our_pheno), path(newfilestat)
+	  script :
+	    newfilestat = "${our_pheno}_withN.gemma"
+	    """
+	    addn_statgwas.py --file_stat $filestat --file_freq $fileN --gwas_chr chr --gwas_ps ps --gwas_rs rs --out $newfilestat
+	    """
+	}
 
 
 
-workflow gwasgemma{
-  take :
-   ch_plkfile
-   ch_plkfile_rel
-   listchro
-   filepheno
-   filers
-   listpheno
-   bed_file_rel
-   filevcf
-   listfilevcf
-   covar
- main :
-   listchro_ch=listchro.flatMap{ list_str -> list_str.split() }
-   if(params.dosage==1){
-     if(params.file_bimbam!=""){
-         bimbamfilei=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
-         bimbamfilerel=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
-         if(params.gemma_loco==1){
-            splitbimbamchro(listchro_ch.combine(bimbamfilei))
-            bimbamfile=splitbimbamchro.out
-         }else{
-             bimbamfile=bimbamfilei
-         }
-         
-     }else if(params.file_vcf!=""){
-         formatvcfinbimbam(channel.from(-1).combine(filevcf))
-         if(params.gemma_loco==1){
-            splitbimbamchro(listchro_ch.combine(formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()))
-           
-            bimbamfile=splitbimbamchro.out
-            bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
-         }else{
-         bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
-         bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
-         }
-     }else if(params.listfile_bimbam!=""){
-          chrobimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}
-          namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
-          bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
-          file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
-          ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
-          mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
-         if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2]].combinations()}
-         else bimbamfile=bimbamfileI
-         bimbamfilerel=mergebimbamrel.out
-     }else if(params.listfile_vcf!=""){
-         get_chrovcf(listfilevcf)
-         formatvcfinbimbam(get_chrovcf.out.chro_vcf)
-         file_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[1]}.collect()
-         ind_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[2]}.collect()
-         mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
-         bimbamfilerel=mergebimbamrel.out
-         if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2]].combinations()}
-         else bimbamfile=formatvcfinbimbam.out
-     }else{
-    println "No file gave for dosage, vcf imputation or bimbam file";
-    System.exit(-2);
+	workflow gwasgemma{
+	  take :
+	   ch_plkfile
+	   ch_plkfile_rel
+	   listchro
+	   filepheno
+	   filers
+	   listpheno
+	   bed_file_rel
+	   filevcf
+	   listfilevcf
+	   covar
+	 main :
+	   listchro_ch=listchro.flatMap{ list_str -> list_str.split() }
+	   if(params.dosage==1){
+	     if(params.file_bimbam!=""){
+		 bimbamfilei=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+		 bimbamfilerel=channel.fromPath(params.file_bimbam,checkIfExists:true).combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+		 if(params.gemma_loco==1){
+		    splitbimbamchro(listchro_ch.combine(bimbamfilei))
+		    bimbamfile=splitbimbamchro.out
+		 }else{
+		     bimbamfile=bimbamfilei
+		 }
+		 
+	     }else if(params.file_vcf!=""){
+		 formatvcfinbimbam(channel.from(-1).combine(filevcf))
+		 if(params.gemma_loco==1){
+		    splitbimbamchro(listchro_ch.combine(formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()))
+		   
+		    bimbamfile=splitbimbamchro.out
+		    bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
+		 }else{
+		 bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
+		 bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2]]}.collect()
+		 }
+	     }else if(params.listfile_bimbam!=""){
+		  chrobimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}
+		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+		  bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+		  file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
+		  ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
+		  mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
+		 if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2]].combinations()}
+		 else bimbamfile=bimbamfileI
+		 bimbamfilerel=mergebimbamrel.out
+	     }else if(params.listfile_vcf!=""){
+		 get_chrovcf(listfilevcf)
+		 formatvcfinbimbam(get_chrovcf.out.chro_vcf)
+		 file_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[1]}.collect()
+		 ind_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[2]}.collect()
+		 mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
+		 bimbamfilerel=mergebimbamrel.out
+		 if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2]].combinations()}
+		 else bimbamfile=formatvcfinbimbam.out
+	     }else{
+	    println "No file gave for dosage, vcf imputation or bimbam file";
+	    System.exit(-2);
 
-    }
-     if(params.gemma_loco==0){
-         GemmaBimbamRel(channel.from("-1").combine(bimbamfilerel).combine(bed_file_rel))
+	    }
+	     if(params.gemma_loco==0){
+		 GemmaBimbamRel(channel.from("-1").combine(bimbamfilerel).combine(bed_file_rel))
 
-         doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
-         doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
-     }else{
-            GemmaBimbamRel(listchro_ch.combine(bimbamfilerel).combine(bed_file_rel))
-            doGemmabimbam(GemmaBimbamRel.out.join(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/chro')))
-            doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
-     }
-    format_summarystat_gemmadosage(doMergeGemma.out)
-    ressummstat=format_summarystat_gemmadosage.out
-   }else{
-    if(params.gemma_loco==0){
-      getGemmaRelAll(ch_plkfile_rel)
-      doGemma(getGemmaRelAll.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/log/')))
-      ressummstat=doGemma.out.resgemma
-    }else{
-     getGemmaRelChro(ch_plkfile_rel.combine(listchro_ch))
-     doGemma(getGemmaRelChro.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/chro/')))
-     doMergeGemma(doGemma.out.resgemma.groupTuple())
-     ressummstat=doMergeGemma.out
-   }
- }
- computeN_plink(filepheno.combine(ch_plkfile).combine(listpheno).combine(covar))
- addNtoStatGemma(ressummstat.join(computeN_plink.out))
- getreport(addNtoStatGemma.out.combine(channel.of( 'gemma')))
+		 doGemmabimbam(GemmaBimbamRel.out.combine(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/')))
+		 doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
+	     }else{
+		    GemmaBimbamRel(listchro_ch.combine(bimbamfilerel).combine(bed_file_rel))
+		    doGemmabimbam(GemmaBimbamRel.out.join(bimbamfile).combine(filepheno).combine(filers).combine(listpheno).combine(channel.of('gemma/chro')))
+		    doMergeGemma(doGemmabimbam.out.resgemma.groupTuple())
+	     }
+	    format_summarystat_gemmadosage(doMergeGemma.out)
+	    ressummstat=format_summarystat_gemmadosage.out
+	   }else{
+	    if(params.gemma_loco==0){
+	      getGemmaRelAll(ch_plkfile_rel)
+	      doGemma(getGemmaRelAll.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/log/')))
+	      ressummstat=doGemma.out.resgemma
+	    }else{
+	     getGemmaRelChro(ch_plkfile_rel.combine(listchro_ch))
+	     doGemma(getGemmaRelChro.out.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(channel.of('gemma/chro/')))
+	     doMergeGemma(doGemma.out.resgemma.groupTuple())
+	     ressummstat=doMergeGemma.out
+	   }
+	 }
+	 computeN_plink(filepheno.combine(ch_plkfile).combine(listpheno).combine(covar))
+	 addNtoStatGemma(ressummstat.join(computeN_plink.out))
+	 getreport(addNtoStatGemma.out.combine(channel.of( 'gemma')))
 
-}
-process cleanvcf{
-  label 'py3utils'
-   input :
-    tuple path(filevcf), path(IndTokeep)
-  publishDir "${params.output_dir}/format/vcffilter", mode:'copy'
-  output :
-    path(newfilevcf)
-  script : 
-    newfilevcf='filt_'+filevcf
-    indkeep=(params.keep_vcf=="") ? "" : " --keep $IndTokeep "  
-    """ 
-    ${params.vcfftools_bin} --gzvcf $filevcf --maf ${params.cut_maf} $indkeep  --recode --recode-INFO-all  --stdout | bgzip -c > $newfilevcf
-    """
-}
+	}
+	process cleanvcf{
+	  label 'py3utils'
+	   input :
+	    tuple path(filevcf), path(IndTokeep)
+	  publishDir "${params.output_dir}/format/vcffilter", mode:'copy'
+	  output :
+	    path(newfilevcf)
+	  script : 
+	    newfilevcf='filt_'+filevcf
+	    indkeep=(params.keep_vcf=="") ? "" : " --keep $IndTokeep "  
+	    """ 
+	    ${params.vcfftools_bin} --gzvcf $filevcf --maf ${params.cut_maf} $indkeep  --recode --recode-INFO-all  --stdout | bgzip -c > $newfilevcf
+	    """
+	}
 
-workflow cleanvcfwf{
- main : 
- if(params.file_vcf!='' & params.listfile_vcf!=''){
-  println "file_vcf != '' and listfile_vcf != ''"
-  System.exit(-2);
- }
- if(params.file_vcf!=''){
-  filevcf=channel.fromPath(params.file_vcf, checkIfExists:true)
-  if(params.keep_vcf!=''){
-    cleanvcf(filevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
-    filevcf=cleanvcf.out
-  }
- }else {
-  filevcf=channel.fromPath("${dummy_dir}/02", checkIfExists:true)
- }
- if(params.listfile_vcf!=''){
-    listfilevcf=channel.fromPath(file(params.listfile_vcf, checkIfExists:true).readLines(), checkIfExists:true)
-    if(params.keep_vcf!=''){
-      cleanvcf(listfilevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
-      listfilevcf = cleanvcf.out
-    }
-  }else{
-    listfilevcf=channel.fromPath("${dummy_dir}/03", checkIfExists:true)
-  }
- emit :
-  filevcf = filevcf 
-  listfilevcf= listfilevcf
-}
-
-
-include {format_vcfinplk} from './workflow/convert_file.nf'
+	workflow cleanvcfwf{
+	 main : 
+	 if(params.file_vcf!='' & params.listfile_vcf!=''){
+	  println "file_vcf != '' and listfile_vcf != ''"
+	  System.exit(-2);
+	 }
+	 if(params.file_vcf!=''){
+	  filevcf=channel.fromPath(params.file_vcf, checkIfExists:true)
+	  if(params.keep_vcf!=''){
+	    cleanvcf(filevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
+	    filevcf=cleanvcf.out
+	  }
+	 }else {
+	  filevcf=channel.fromPath("${dummy_dir}/02", checkIfExists:true)
+	 }
+	 if(params.listfile_vcf!=''){
+	    listfilevcf=channel.fromPath(file(params.listfile_vcf, checkIfExists:true).readLines(), checkIfExists:true)
+	    if(params.keep_vcf!=''){
+	      cleanvcf(listfilevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
+	      listfilevcf = cleanvcf.out
+	    }
+	  }else{
+	    listfilevcf=channel.fromPath("${dummy_dir}/03", checkIfExists:true)
+	  }
+	 emit :
+	  filevcf = filevcf 
+	  listfilevcf= listfilevcf
+	}
 
 
-workflow {
- /*bedfile*/
- if(bfile!=""){
-   bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))
- }else{
-  println "no input plink format, used vcf file(s) to format in plink"
-  if(params.reffasta=="" || params.reffasta==true){
-   println("to format vcf in plink need a fasta file : args --reffasta null")
-      exit 1
-  }
-  format_vcfinplk()
-  bedfileI=format_vcfinplk.out.plk
- }
- if(params.rs_list=="")rsfile=Channel.fromPath("${dummy_dir}/06", checkIfExists:true)
- else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
- phenofile=Channel.fromPath(params.data, checkIfExists:true)
- plinkextractind(bedfileI,phenofile)
- subsample_snp_rel(plinkextractind.out.filterind,phenofile)
- getListeChro(plinkextractind.out.filterind)
- listpheno = newNamePheno(params.pheno)
- cleanvcfwf()
- gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, channel.from(listpheno), subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, channel.from(params.covariates))
+	include {format_vcfinplk} from './workflow/convert_file.nf'
 
-}
+
+	workflow {
+	 /*bedfile*/
+	 if(bfile!=""){
+	   bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))
+	 }else{
+	  println "no input plink format, used vcf file(s) to format in plink"
+	  if(params.reffasta=="" || params.reffasta==true){
+	   println("to format vcf in plink need a fasta file : args --reffasta null")
+	      exit 1
+	  }
+	  format_vcfinplk()
+	  bedfileI=format_vcfinplk.out.plk
+	 }
+	 if(params.rs_list=="")rsfile=Channel.fromPath("${dummy_dir}/06", checkIfExists:true)
+	 else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
+	 phenofile=Channel.fromPath(params.data, checkIfExists:true)
+	 plinkextractind(bedfileI,phenofile)
+	 subsample_snp_rel(plinkextractind.out.filterind,phenofile)
+	 getListeChro(plinkextractind.out.filterind)
+	 listpheno = newNamePheno(params.pheno)
+	 cleanvcfwf()
+	 gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out, phenofile, rsfile, channel.from(listpheno), subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, channel.from(params.covariates))
+
+	}
 
