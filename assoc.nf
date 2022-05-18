@@ -312,7 +312,7 @@ process formatvcfinbimbam{
     fileind=Ent+".ind"
     """
     zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
-    bcftools index $vcf
+    bcftools index -f $vcf
     ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
     """
 }
@@ -381,8 +381,11 @@ workflow getsnpincluderelat{
   take :
    ch_plkfile
   main:
-  if(params.snps_include_rel!="")ch_snps_include_rel=checkposrsfile(channel.fromPath(params.snps_include_rel,checkIfExists:true),  ch_plkfile,'snpincluderelat.bed').out
-   else ch_snps_include_rel=channel.fromPath("${dummy_dir}/01")
+  
+  if(params.snps_include_rel!=""){
+     checkposrsfile(channel.fromPath(params.snps_include_rel,checkIfExists:true),  ch_plkfile,'snpincluderelat.bed')
+     ch_snps_include_rel=checkposrsfile.out
+   }else ch_snps_include_rel=channel.fromPath("${dummy_dir}/01")
   emit : 
    pos_chr=ch_snps_include_rel
 }
@@ -466,7 +469,7 @@ process GemmaBimbamRel{
        time params.big_time
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        maxForks params.max_forks
-       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+       errorStrategy { task.exitStatus in 135..144 ? 'retry' : 'terminate' }
        maxRetries 10
        input:
          tuple val(chro), path(bimbam), path(ind), path(listpos)
@@ -598,6 +601,9 @@ process doGemmabimbam{
           """
     }
     process get_chrovcf{
+       errorStrategy { task.exitStatus in 142..144 ? 'retry' : 'terminate' }
+       maxRetries 5
+
        input:
           path(vcf)
        output :
@@ -614,14 +620,15 @@ process mergebimbamrel{
     path(listind)
     path(filepos) 
   output :
-    tuple path(subbimbam), path("${listind[0]}")
+    tuple path(subbimbam), path("listind.bimbam.out")
   script :
     allbimbam=listbimam.join(',')
     subbimbam='allrelpos.bimbam'
     subbimbamnd='allrelpos.ind'
-     """
+    """
+     cp ${listind[0]} listind.bimbam.out
      listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam
-     """
+    """
 }
 
 process getreport{
@@ -639,6 +646,8 @@ process getreport{
 process computeN_plink{
   label 'R' 
   cpus params.max_plink_cores
+  memory { strmem(other_mem_req) + 5.GB * (task.attempt -1) }
+  maxRetries 10
   input :
     tuple path(data), path(bed), path(bim), path(fam), val(this_pheno),val(covar)
   output :
@@ -646,7 +655,7 @@ process computeN_plink{
   script :
     our_pheno2          = this_pheno.replaceAll(/_|\/np.\w+/,"-").replaceAll(/[0-9]+@@@/,"")
     our_pheno          = this_pheno.replaceAll(/[0-9]+@@@/,"")
-    headout=this_pheno+'_statn'
+    headout=our_pheno2+'_statn'
     plkf=bed.baseName
     covar = (covar=="") ? "" : " --covar $covar "
 
@@ -765,6 +774,8 @@ process addNtoStatGemma{
 	}
 	process cleanvcf{
 	  label 'py3utils'
+          errorStrategy { task.exitStatus in 142..144 ? 'retry' : 'terminate' }    
+          maxRetries 5  
 	   input :
 	    tuple path(filevcf), path(IndTokeep)
 	  publishDir "${params.output_dir}/format/vcffilter", mode:'copy'

@@ -18,37 +18,37 @@ nbcol=len(firstline)
 ## case of 4 => nothing to do
 cmt=1
 if nbcol==4 :
-  writepos("\t".join(firstline)+'\n')
+  writepos.write("\t".join(firstline)+'\n')
   for line in readpos :
     line=line.replace('\n','').split()
     if nbcol!=len(line):
        print("row "+str(cmt)+" doesn't contain "+str(ncol)+"in file "+listpos+"\nexit\t")
        sys.exit(2)
-    writepos("\t".join(line)+'\n')
+    writepos.write("\t".join(line)+'\n')
 elif nbcol==2 :
-  writepos(firstline[0]+"\t"+firstline[1]+"\t"+firstline[1]+"\t"+firstline[0]+":"+firstline[1]+'\n')
+  writepos.write(firstline[0]+"\t"+firstline[1]+"\t"+firstline[1]+"\t"+firstline[0]+":"+firstline[1]+'\n')
   for line in readpos :
     line=line.replace('\n','').split()
     if nbcol!=len(line):
        print("row "+str(cmt)+" doesn't contain "+str(ncol)+"in file "+listpos+"\nexit\t")
        sys.exit(2)
-    writepos(line[0]+"\t"+line[1]+"\t"+line[1]+"\t"+line[0]+":"+line[1]+'\n')
+    writepos.write(line[0]+"\t"+line[1]+"\t"+line[1]+"\t"+line[0]+":"+line[1]+'\n')
 elif nbcol==3 and firstline[2].isnumeric()==False:
-  writepos(firstline[0]+"\t"+firstline[1]+"\t"+firstline[1]+"\t"+firstline[2]+'\n')
+  writepos.write(firstline[0]+"\t"+firstline[1]+"\t"+firstline[1]+"\t"+firstline[2]+'\n')
   for line in readpos :
     line=line.replace('\n','').split()
     if nbcol!=len(line):
        print("row "+str(cmt)+" doesn't contain "+str(ncol)+"in file "+listpos+"\nexit\t")
        sys.exit(2)
-    writepos(line[0]+"\t"+line[1]+"\t"+line[1]+"\t"+line[2]+'\n')
+    writepos.write(line[0]+"\t"+line[1]+"\t"+line[1]+"\t"+line[2]+'\n')
 elif nbcol==3 and firstline[2].isnumeric():
-  writepos(firstline[0]+"\t"+firstline[1]+"\t"+firstline[2]+"\t"+firstline[0]+":"+firstline[1]+":"+firstline[2]+'\n')
+  writepos.write(firstline[0]+"\t"+firstline[1]+"\t"+firstline[2]+"\t"+firstline[0]+":"+firstline[1]+":"+firstline[2]+'\n')
   for line in readpos :
     line=line.replace('\n','').split()
     if nbcol!=len(line):
        print("row "+str(cmt)+" doesn't contain "+str(ncol)+"in file "+listpos+"\nexit\t")
        sys.exit(2)
-    writepos(line[0]+"\t"+line[1]+"\t"+line[2]+"\t"+line[0]+":"+line[1]+":"+line[2]+'\n')
+    writepos.write(line[0]+"\t"+line[1]+"\t"+line[2]+"\t"+line[0]+":"+line[1]+":"+line[2]+'\n')
 elif nbcol==1 :
   ## consider as rs read in bimfile
   listrs=set(firstline)

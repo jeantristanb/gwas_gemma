@@ -26,13 +26,16 @@ args = parseArguments()
 
 datastat= pd.read_csv(args.file_stat,delim_whitespace=True)
 freqAll = pd.read_csv(args.file_freq,delim_whitespace=True)
-freqAll = freqAll[['CHR','SNP', 'NCHROBS']]
+freqAll = freqAll[['CHR','SNP', 'BP','NCHROBS']]
 freqAll['NCHROBS']=freqAll['NCHROBS']/2
 freqAll['CHR']=freqAll['CHR'].replace(' ','').astype(str)
 freqAll['SNP']=freqAll['SNP'].replace(' ','')
-freqAll=freqAll.rename(index=str, columns={"MAF": "Freq_All", "NCHROBS": "N", "CHR":args.gwas_chr, "SNP":args.gwas_rs})
+freqAll['BP']=freqAll['BP'].replace(' ','').astype(int)
+datastat[args.gwas_ps]=datastat[args.gwas_ps].replace(' ', '').astype(int)
 datastat[args.gwas_chr]=datastat[args.gwas_chr].astype(str)
-datastatAll=pd.merge(datastat,freqAll,how="left",on=[args.gwas_chr, args.gwas_rs])
+
+freqAll=freqAll.rename(index=str, columns={"MAF": "Freq_All", "NCHROBS": "N", "CHR":args.gwas_chr, "SNPplk":args.gwas_rs, "BP":args.gwas_ps})
+datastatAll=pd.merge(datastat,freqAll,how="left",on=[args.gwas_chr, args.gwas_ps])
 datastatAll.to_csv(args.out, sep='\t', na_rep='NA', header=True, index=False, mode='w')
 
 

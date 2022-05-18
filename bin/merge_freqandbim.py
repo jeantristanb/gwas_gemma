@@ -20,11 +20,11 @@ args = parseArguments()
 freq= pd.read_csv(args.freq,delim_whitespace=True)
 #1	1:723918:G:A	0.417725	723918	A	G
 
-bim=pd.read_csv(args.freq,delim_whitespace=True,header=None)
+bim=pd.read_csv(args.bim,delim_whitespace=True,header=None)
 bim.columns= ["CHR", "SNP", "CM", "BP", "A1","A2"]
 bim=bim[['CHR', 'SNP', 'BP']]
 
-allfreq=freq.merge(freq, left_on='SNP', right_on='SNP')
+allfreq=freq.merge(bim, left_on=['CHR','SNP'], right_on=['CHR','SNP'])
 allfreq.to_csv(args.out,sep="\t",header=True,index=False,na_rep="NA")
 
 
