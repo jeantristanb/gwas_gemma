@@ -109,6 +109,8 @@ gxe_labels, gxe_transform  = getColNames(gxe)
 usecols = covar_labels+pheno_labels+gxe_labels
 
 datad = pd.read_csv(args.data,delim_whitespace=True,usecols=usecols)
+datad['FID']=datad['FID'].apply(str)
+datad['IID']=datad['IID'].apply(str)
 columns = datad.columns
 
 if "FID" not in columns or "IID" not in columns:
@@ -127,8 +129,12 @@ for (label, transform) in zip(pheno_labels+covar_labels, pheno_transform+cover_t
 
 if args.form_out!=5 :
   famd  = pd.read_csv(args.inp_fam,header=None,delim_whitespace=True,names=["FID","IID","FAT","MAT","SEXFAM","CC"])
+  famd['FID']=famd['FID'].apply(str)
+  famd['IID']=famd['IID'].apply(str)
 else :
   datat=pd.read_csv(args.bimbam_ind, header=None, delim_whitespace=True, names=["FID"])
+  #df['DataFrame Column'] = df['DataFrame Column'].apply(str)
+  datat['FID']=datat['FID'].apply(str)
   datat['numrow']=datat.index
   datatmp=pd.merge(datat,datad, left_on='FID', right_on='FID',how='left')
   nbna=datatmp['IID'].isna().sum()
