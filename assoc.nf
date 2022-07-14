@@ -36,7 +36,7 @@ def strmem(val){
 
 def helps = [ 'help' : 'help' ]
 
-allowed_params = ["bfile","input_dir","input_pat","output","output_dir","data","plink_mem_req","covariates","gemma_num_cores","gemma_mem_req","gemma","linear","logistic","assoc","fisher", "work_dir", "scripts", "max_forks", "high_ld_regions_fname", "sexinfo_available", "cut_het_high", "cut_het_low", "cut_diff_miss", "cut_maf", "cut_mind", "cut_geno", "cut_hwe", "pi_hat", "case_control", "case_control_col", "phenotype", "pheno_col", "batch", "batch_col", "samplesize", "strandreport", "manifest", "idpat", "accessKey", "access-key", "secretKey", "secret-key", "region", "other_mem_req", "max_plink_cores", "pheno","big_time","thin", "gemma_mat_rel","print_pca", "listsnps_buildrelat","genetic_map_file", "rs_list","adjust","bootStorageSize","shared-storage-mount","mperm","sharedStorageMount","max-instances","maxInstances","boot-storage-size","sharedStorageMound","instance-type","instanceType","AMI", "gemma_multi",  "saige", 'gemma_loco', 'file_vcf', 'listfile_vcf', 'dosage', 'file_bimbam', 'file_bimbam_ind','keep_vcf', 'vcftools_bin']
+allowed_params = ["bfile","input_dir","input_pat","output","output_dir","data","plink_mem_req","covariates","gemma_num_cores","gemma_mem_req","gemma","linear","logistic","assoc","fisher", "work_dir", "scripts", "max_forks", "high_ld_regions_fname", "sexinfo_available", "cut_het_high", "cut_het_low", "cut_diff_miss", "cut_maf", "cut_mind", "cut_geno", "cut_hwe", "pi_hat", "case_control", "case_control_col", "phenotype", "pheno_col", "batch", "batch_col", "samplesize", "strandreport", "manifest", "idpat", "accessKey", "access-key", "secretKey", "secret-key", "region", "other_mem_req", "max_plink_cores", "pheno","big_time","thin", "gemma_mat_rel","print_pca", "listsnps_buildrelat","genetic_map_file", "rs_list","adjust","bootStorageSize","shared-storage-mount","sharedStorageMount","max-instances","maxInstances","boot-storage-size","sharedStorageMound","instance-type","instanceType","AMI", "gemma_multi",  "saige", 'gemma_loco', 'file_vcf', 'listfile_vcf', 'dosage', 'file_bimbam', 'file_bimbam_ind','keep_vcf', 'vcftools_bin']
 
 allowed_params_rel=["snps_exclude_rel", "snps_include_rel", "listsnps_buildrelat", "sample_snps_rel",  "thin_snp_rel", "cut_maf_rel"]
 allowed_params+=allowed_params_rel
@@ -83,9 +83,7 @@ params.chrom      = ""
 params.print_pca = 1
 params.genetic_map_file = ""
 params.list_vcf=""
-params.vcf_field="DS"
 params.min_scoreinfo=0.3
-params.vcf_minmac=1
 outfname = params.output_testing
 params.cut_maf=0.01
 params.keep_vcf=''
@@ -105,7 +103,6 @@ params.vcfftools_bin='vcftools'
 
 
 /* Do permutation testing -- 0 for none, otherwise give number */
-params.mperm = 00
 
 /* Adjust for multiple correcttion */
 params.adjust = 0
@@ -113,14 +110,7 @@ params.adjust = 0
 supported_tests_all = ["assoc","fisher","model","cmh","linear","logistic","boltlmm", "fastlmm", "gemma", "gemma_gxe", 'saige']
 
 
-params.assoc     = 0
-params.fisher   = 0
-params.cmh     =  0
-params.model   =  0
-params.linear   = 0
-params.logistic = 0
 params.gemma = 0
-params.saige=0
 
 params.gemma_multi=0
 params.gemma_mem_req = "6GB"
@@ -194,7 +184,6 @@ params.pheno_bin=0
 
 params.genotype_field="GP"
 params.score_imp="INFO"
-params.statfreq_vcf="%AN %AC"
 params.qctoolsv2_bin="qctool"
 params.bcftools_bin="bcftools"
 
