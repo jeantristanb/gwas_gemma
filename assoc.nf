@@ -469,7 +469,7 @@ process GemmaBimbamRel{
        time params.big_time
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        maxForks params.max_forks
-       errorStrategy { task.exitStatus in 135..144 ? 'retry' : 'terminate' }
+       errorStrategy 'retry' 
        maxRetries 10
        input:
          tuple val(chro), path(bimbam), path(ind), path(listpos)
