@@ -87,6 +87,7 @@ params.min_scoreinfo=0.3
 outfname = params.output_testing
 params.cut_maf=0.01
 params.keep_vcf=''
+params.statfreq_vcf="%AN %AC"
 
 params.listsnps_buildrelat = ""
 params.snps_include_rel=""
