@@ -1,3 +1,18 @@
+
+filescript=file(workflow.scriptFile)
+projectdir="${filescript.getParent()}"
+dummy_dir="${projectdir}/input"
+
+plink_mem_req = params.plink_mem_req
+other_mem_req = params.other_process_mem_req
+max_plink_cores = params.max_plink_cores
+
+
+def strmem(val){
+ return val as nextflow.util.MemoryUnit
+}
+
+
 process getListeChro{
   input :
    tuple path(bed), path(bim), path(fam)
@@ -57,4 +72,34 @@ workflow getsnpincluderelat{
   emit :
    pos_chr=ch_snps_include_rel
 }
+
+process splitbimbamchro{
+        input :
+          tuple val(chro), path(bimbam), path(bimbam_ind)
+         output :
+          tuple val(chro), path("$newfile"), path(bimbam_ind)
+        script :
+          newfile = bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.bimbam'
+          """
+          listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile
+          """
+}
+
+process mergebimbamrel{
+  input :
+    path(listbimam)
+    path(listind)
+    path(filepos)
+  output :
+    tuple path(subbimbam), path("listind.bimbam.out")
+  script :
+    allbimbam=listbimam.join(',')
+    subbimbam='allrelpos.bimbam'
+    subbimbamnd='allrelpos.ind'
+    """
+     cp ${listind[0]} listind.bimbam.out
+     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam
+    """
+}
+
 

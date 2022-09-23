@@ -1,3 +1,6 @@
+plink_mem_req = params.plink_mem_req
+other_mem_req = params.other_process_mem_req
+max_plink_cores = params.max_plink_cores
 
 process unzipdir{
   input :

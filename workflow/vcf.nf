@@ -1,3 +1,11 @@
+filescript=file(workflow.scriptFile)
+projectdir="${filescript.getParent()}"
+dummy_dir="${projectdir}/input"
+
+plink_mem_req = params.plink_mem_req
+other_mem_req = params.other_process_mem_req
+max_plink_cores = params.max_plink_cores
+
  process get_chrovcf{
        errorStrategy { task.exitStatus in 142..144 ? 'retry' : 'terminate' }
        maxRetries 5
