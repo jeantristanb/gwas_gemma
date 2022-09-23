@@ -227,9 +227,182 @@ if(params.input_dir!="" && params.input_pat!=""){
   bfile=params.bfile
  }
 }
+process plinkextractpos{
+ cpus max_plink_cores
+ input:
+  tuple path(bed), path(bim), path(fam)
+  path(listsnp)
+  path(indkeep)
+ output :
+  tuple path("${bfilef}.bed"), path("${bfilef}.bim"), path("${bfilef}.fam")
+ script :
+   bfile=bed.baseName
+   bfilef=bfile+'_relsub'
+   """
+   sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
+   plink -bfile $bfile  --extract range $listsnp --keep indkeep --keep-allele-order --make-bed -out $bfilef
+   """
+}
+
+process plinkextractind{
+ cpus max_plink_cores
+ input :
+  tuple path(bed), path (bim), path(fam)
+  path(indkeep)
+ output :
+  tuple path("${outbed}.bed"), path("${outbed}.bim"), path("${outbed}.fam"), emit: filterind
+ script :
+  bfile=bed.baseName
+  outbed=bfile+"_subind"
+  """
+  sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
+  plink -bfile $bfile --keep-allele-order --make-bed -out $outbed --threads $max_plink_cores --keep $indkeep
+  """
+}
+
+process format_summarystat_gemmadosage{
+ input :
+     tuple val(pheno) ,path(filegemma)
+ output :
+     tuple val(pheno),path(filegemmaformat)
+ //publishDir "${params.output_dir}/gemma/", mode:'copy'
+ script :
+     filegemmaformat=pheno+"_format.gemma"
+     """
+     format_gemmabimbam.py $filegemma $filegemmaformat
+     """
+
+}
+
+process getListeChro{
+  input :
+   tuple path(bed), path(bim), path(fam)
+  output :
+     stdout
+  script:
+     """
+     cat $bim|awk '{print \$1}'|uniq|sort|uniq
+     """
+}
+
+process formatvcfinbimbam{
+  label 'py3utils'
+  cpus params.max_plink_cores
+  memory params.plink_mem_req
+  time   params.big_time
+  input :
+     tuple val(chro), path(vcf)
+  publishDir "${params.output_dir}/format/bimbam", mode:'copy'
+  output :
+     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
+  script :
+    headvcf=vcf.baseName
+    Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
+    chroparam=(chro!=-1) ?  " --regions $chro" : ""
+    fileind=Ent+".ind"
+    """
+    zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
+    bcftools index -f $vcf
+    ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    """
+}
+
+
+process formatvcfinbimbam_ind{
+  label 'py3utils'
+  cpus params.max_plink_cores
+  memory params.plink_mem_req
+  time   params.big_time
+  input :
+     tuple val(chro), path(vcf), path(fileind)
+  publishDir "${params.output_dir}/format/bimbam", mode:'copy'
+  output :
+     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
+  script :
+    headvcf=vcf.baseName
+    Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
+    chroparam=(chro!=-1) ?  " --regions $chro" : ""
+    fileind=Ent+".ind"
+    """
+    zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
+    keep_vcfiid.r --data $fileind --vcf $vcf --out sample_vcf.keep
+    bcftools index $vcf
+    ${params.bcftools_bin} view --samples-file sample_vcf.keep -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    """
+}
 
 
 
+process subsample_snps{
+ cpus max_plink_cores
+ input:
+  tuple path(bed), path(bim), path(fam)
+  path(snp_exclude_bed)
+  path(snp_include_bed)
+  path(indkeep)
+ output:
+  path("${outfile}.prune.in"), emit: subsample_snps_list
+ script:
+  bfile=bed.baseName
+  outfile="sub_indep_pairwise"
+  rangeexclude=(params.snps_exclude_rel=="") ? "" : " --exclude range $snp_exclude_bed "
+  rangeinclude=(params.snps_include_rel=="") ? "" : " --extract range $snp_include_bed "
+  maf=(params.cut_maf_rel=="") ? "" : " --maf ${params.cut_maf_rel}"
+  balisethin=(params.thin_snp_rel=="") ? "0" : "1"
+  """
+  sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
+  plink --bfile $bfile --threads $max_plink_cores --autosome $rangeexclude --indep-pairwise ${params.plink_indep_pairwise} --out $outfile $maf --keep indkeep --keep-allele-order $rangeinclude
+  if [ "$balisethin" == "1" ]
+  then
+   cp ${outfile}.prune.in ${outfile}.prune.tmp.in
+   shuf ${outfile}.prune.tmp.in | head -${params.thin_snp_rel} > ${outfile}.prune.in
+  fi
+  """
+}
+/*process insure that file is in chr pos pos rs*/
+process checkposrsfile{
+  input :
+    path(pos)
+    tuple path(bed), path(bim), path(fam) 
+    val(out)
+  output :
+    path("$out")
+  script :
+     """
+     check_filpos.py $pos $bim $out
+     """
+}
+
+workflow getsnpbuilrelat{
+ take :
+   ch_plkfile
+ main :
+   checkposrsfile(channel.fromPath(params.listsnps_buildrelat, checkIfExists:true), ch_plkfile,'snpbuildrelat.bed')
+ emit :
+   pos_chr=checkposrsfile.out
+}
+workflow getsnpexcluderelat{
+  take:
+   ch_plkfile
+  main:
+  if(params.snps_exclude_rel!="")ch_snps_exclude_rel=checkposrsfile(channel.fromPath(params.snps_exclude_rel,checkIfExists:true),  ch_plkfile,'snpexcluderelat.bed').out
+   else ch_snps_exclude_rel=channel.fromPath("${dummy_dir}/00")
+  emit : 
+   pos_chr=ch_snps_exclude_rel
+}
+
+workflow getsnpincluderelat{
+  take :
+   ch_plkfile
+  main:
+  
+  if(params.snps_include_rel!=""){
+     checkposrsfile(channel.fromPath(params.snps_include_rel,checkIfExists:true),  ch_plkfile,'snpincluderelat.bed')
+     ch_snps_include_rel=checkposrsfile.out
+   }else ch_snps_include_rel=channel.fromPath("${dummy_dir}/01")
+  emit : 
+   pos_chr=ch_snps_include_rel
+}
 
 
 
@@ -413,7 +586,7 @@ process doGemmabimbam{
      }
 
 
-process doMergeGemma{
+     process doMergeGemma{
             input :
                tuple val(this_pheno),path(list_file)  
             //publishDir "${params.output_dir}/gemma", mode:'copy'
@@ -429,7 +602,7 @@ process doMergeGemma{
                 head -1 $file1 > $out
                 cat $fnames | grep -v "p_wald" >> $out
                 """
-}
+        }
     process splitbimbamchro{
         input :
           tuple val(chro), path(bimbam), path(bimbam_ind)
@@ -441,6 +614,19 @@ process doMergeGemma{
           listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile 
           """
     }
+ process get_chrovcf{
+       errorStrategy { task.exitStatus in 142..144 ? 'retry' : 'terminate' }
+       maxRetries 5
+
+       input:
+          path(vcf)
+       output :
+           tuple env(chro), path(vcf), emit : chro_vcf
+       script :
+          """
+          chro=`zcat $vcf|head -1000|grep -v "#"|awk '{print \$1}'|uniq`
+          """
+}
 
 process mergebimbamrel{
   input : 
@@ -471,6 +657,28 @@ process getreport{
    """
 }
 
+process computeN_plink{
+  label 'R' 
+  cpus params.max_plink_cores
+  memory { strmem(other_mem_req) + 5.GB * (task.attempt -1) }
+  maxRetries 10
+  input :
+    tuple path(data), path(bed), path(bim), path(fam), val(this_pheno),val(covar)
+  output :
+     tuple val(our_pheno2),file("${headout}.frq")
+  script :
+    our_pheno2          = this_pheno.replaceAll(/_|\/np.\w+/,"-").replaceAll(/[0-9]+@@@/,"")
+    our_pheno          = this_pheno.replaceAll(/[0-9]+@@@/,"")
+    headout=our_pheno2+'_statn'
+    plkf=bed.baseName
+    covar = (covar=="") ? "" : " --covar $covar "
+
+    """
+    formatpheno_plink.r --data $data --pheno ${our_pheno} --out pheno_plink --binary 0  $covar
+    plink -bfile $plkf --keep pheno_plink --freq -out $headout"_tmp" --keep-allele-order --threads ${params.max_plink_cores}
+    merge_freqandbim.py  --freq  ${headout}_tmp.frq --bim $bim --out ${headout}.frq
+    """
+}
 
 process addNtoStatGemma{
            errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
@@ -580,11 +788,65 @@ workflow gwasgemma{
 
 }
 
+process cleanvcf{
+	  label 'py3utils'
+          errorStrategy { task.exitStatus in 142..144 ? 'retry' : 'terminate' }    
+          maxRetries 5  
+	   input :
+	    tuple path(filevcf), path(IndTokeep)
+	  publishDir "${params.output_dir}/format/vcffilter", mode:'copy'
+	  output :
+	    path(newfilevcf)
+	  script : 
+	    newfilevcf='filt_'+filevcf
+	    indkeep=(params.keep_vcf=="") ? "" : " --keep $IndTokeep "  
+	    """ 
+	    ${params.vcfftools_bin} --gzvcf $filevcf --maf ${params.cut_maf} $indkeep  --recode --recode-INFO-all  --stdout | bgzip -c > $newfilevcf
+	    """
+	}
+
+workflow cleanvcfwf{
+	 main : 
+	 if(params.file_vcf!='' & params.listfile_vcf!=''){
+	  println "file_vcf != '' and listfile_vcf != ''"
+	  System.exit(-2);
+	 }
+	 if(params.file_vcf!=''){
+	  filevcf=channel.fromPath(params.file_vcf, checkIfExists:true)
+	  if(params.keep_vcf!=''){
+	    cleanvcf(filevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
+	    filevcf=cleanvcf.out
+	  }
+	 }else {
+	  filevcf=channel.fromPath("${dummy_dir}/02", checkIfExists:true)
+	 }
+	 if(params.listfile_vcf!=''){
+	    listfilevcf=channel.fromPath(file(params.listfile_vcf, checkIfExists:true).readLines(), checkIfExists:true)
+	    if(params.keep_vcf!=''){
+	      cleanvcf(listfilevcf.combine(channel.fromPath(params.keep_vcf, checkIfExists:true)))
+	      listfilevcf = cleanvcf.out
+	    }
+	  }else{
+	    listfilevcf=channel.fromPath("${dummy_dir}/03", checkIfExists:true)
+	  }
+	 emit :
+	  filevcf = filevcf 
+	  listfilevcf= listfilevcf
+}
 
 
-include {format_vcfinplk} from './workflow/convert_file.nf'
+	include {format_vcfinplk} from './workflow/convert_file.nf'
 
 
+worflow clean_pheno{
+ take :
+   pheno_file
+   list_pheno
+ main :
+
+ 
+
+}
 workflow {
 	 /*bedfile*/
 	 if(bfile!=""){
