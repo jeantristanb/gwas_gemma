@@ -27,8 +27,8 @@ process doGemmabimbam{
        errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        input:
-         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind),path(data),path(rsfilelist), val(this_pheno), val(outdir)
-       publishDir "${params.output_dir}/$outdir", mode:'copy', pattern: '*.log'
+         tuple val(chro), path(rel_matrix),path(bimbam),path(bimbam_ind), path(annotation) ,path(data),path(rsfilelist), val(this_pheno), val(covariates), val(outdir)
+       publishDir "${params.output_dir}/$outdir", mode:'copy'
        output:
          tuple val(our_pheno),path("${dir_gemma}/${out}.assoc.txt"), emit :resgemma
          path("${dir_gemma}/${out}.log.txt"), emit : log
@@ -38,17 +38,17 @@ process doGemmabimbam{
           our_pheno          = this_pheno.replaceAll(/_|\/np.\w+/,"-").replaceAll(/[0-9]+@@@/,"")
           gemma_covariate    = "${our_pheno}.gemma_cov"
           phef               = "${our_pheno}_n.phe"
-          covariate_option = (params.covariates) ?  " --cov_list ${params.covariates} " : ""
+          covariate_option = (covariates=="") ? "" : " --cov_list ${covariates} " 
           bimbamhead=bimbam.baseName
           out                = "$our_pheno-$bimbamhead"
-          covar_opt_gemma    =  (params.covariates) ?  " -c $gemma_covariate " : ""
+          covar_opt_gemma    =  (covariates=="") ? "" :  " -c $gemma_covariate " 
           dir_gemma          =  "gemma"
 
           """
           all_covariate.py --data  $data --bimbam_ind  $bimbam_ind $covariate_option --cov_out $gemma_covariate \
           --pheno $our_pheno2 --phe_out ${phef} --form_out 5
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
-          ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm 1  -n 1 -p $phef -o $out -maf ${params.cut_maf}
+          ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm ${params.gemma_lmm}  -n 1 -p $phef -o $out -maf ${params.cut_maf} -a $annotation
           mv output ${dir_gemma}
           """
 }
@@ -61,7 +61,7 @@ process doGemma{
        maxRetries 10
        time   params.big_time
        input:
-         tuple val(chro), path(rel),path(data), path(bed), path(bim), path(fam), path(rsfilelist), val(this_pheno), val(outdir)
+         tuple val(chro), path(rel),path(data), path(bed), path(bim), path(fam), path(rsfilelist), val(this_pheno), val(covariates),val(outdir)
        publishDir "${params.output_dir}/$outdir",  mode:'copy', pattern: '*.log'
        output:
          tuple val(our_pheno),path("${dir_gemma}/${out}.assoc.txt"), emit :resgemma
@@ -79,12 +79,12 @@ process doGemma{
           newfam             =  newbase+".fam"
           gemma_covariate    = "${newbase}.gemma_cov"
           phef               = "${newbase}_n.phe"
-          covar_opt_gemma    =  (params.covariates) ?  " -c $gemma_covariate " : ""
+          covar_opt_gemma    =  (covariates) ?  " -c $gemma_covariate " : ""
           rs_plk_gem         =  (params.rs_list) ?  " --extract  $rsfilelist" : ""
           out                = "$base-$our_pheno-$chro"
           dir_gemma          =  "gemma"
           chroptionplk       =  (chro==-1) ? "" : "--chr $chro"
-          covariate_option = (params.covariates) ?  " --cov_list ${params.covariates} " : ""
+          covariate_option = (covariates) ?  " --cov_list ${covariates} " : ""
           """
           list_ind_nomissing.py --data $data --inp_fam $inp_fam $covariate_option --pheno $our_pheno3 --dataout $data_nomissing \
                                 --lindout $list_ind_nomissing
@@ -93,7 +93,7 @@ process doGemma{
           all_covariate.py --data  $data_nomissing --inp_fam  ${newbase}.fam $covariate_option --cov_out $gemma_covariate \
                              --pheno $our_pheno2 --phe_out ${phef} --form_out 1
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
-          ${params.gemma_bin} -bfile $newbase ${covar_opt_gemma}  -k $rel_matrix -lmm 1  -n 1 -p $phef -o $out -maf ${params.cut_maf}
+          ${params.gemma_bin} -bfile $newbase ${covar_opt_gemma}  -k $rel_matrix -lmm ${params.gemma_lmm}  -n 1 -p $phef -o $out -maf ${params.cut_maf} 
           mv output ${dir_gemma}
           rm $rel_matrix
           rm ${newbase}.bed ${newbase}.bim ${newbase}.fam

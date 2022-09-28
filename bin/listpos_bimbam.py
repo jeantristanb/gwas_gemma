@@ -9,6 +9,7 @@ def parseArguments():
     parser.add_argument('--filepos',type=str,required=False)
     parser.add_argument('--exclude_chr',type=str,required=False,help="File with phenotype and covariate data", default=-1)
     parser.add_argument('--include_chr',type=str,required=False,help="File with phenotype and covariate data")
+    parser.add_argument('--annotation',type=str,required=True,help="File with phenotype and covariate data")
     parser.add_argument('--out',type=str,required=True,help="File with phenotype and covariate data")
 
     args = parser.parse_args()
@@ -43,6 +44,7 @@ if filepos :
 filebimbam=args.bimbam
 
 writebimbam=open(filebimbamout, 'w')
+writeannotation=open(args.annotation, 'w')
 if args.bimbam :
    listbimbam=[args.bimbam]
 elif args.listbimbam :
@@ -55,14 +57,17 @@ else :
 for filebimbam in listbimbam:
  readbimbam=open(filebimbam)
  for linebimbam in readbimbam :
-   infobimbam=linebimbamspl=linebimbam.split()[0].split(':')
+   linebimbamspl=linebimbam.split()
+   infobimbam=linebimbamspl[0].split(':')
    if(len(infobimbam)!=3) :
      print(':'.join(infobimbam))
      print('first column of bim bam file must be rs:chr:pos')
      sys.exit(2)
    if balisefilepos and (infobimbam[1] in listpossave) and (infobimbam[2] in listpossave[infobimbam[1]]):
      writebimbam.write(linebimbam) 
+     writeannotation.write(linebimbamspl[0]+", "+infobimbam[1]+", "+infobimbam[2]+'\n') 
    elif chro_include and (infobimbam[1] == chro_include) :
+     writeannotation.write(linebimbamspl[0]+", "+infobimbam[1]+", "+infobimbam[2]+'\n') 
      writebimbam.write(linebimbam) 
  readbimbam.close()
 

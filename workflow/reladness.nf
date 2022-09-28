@@ -45,7 +45,8 @@ process getGemmaRelAll {
          tuple path(bed), path(bim), path(fam)
        publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
-          tuple val(-1),path("output/${base}.*XX.txt")
+          tuple val(-1),path("output/${base}.*XX.txt"), emit : rel
+          path("output/*.log.txt"), emit : log
        script:
           base = bed.baseName
           famfile=base+".fam"
@@ -68,7 +69,8 @@ process getGemmaRelChro{
          tuple path(bed), path(bim), path(fam), val(chro)
        publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
-          tuple val(chro), path("output/${newbase}.*XX.txt")
+          tuple val(chro), path("output/${newbase}.*XX.txt"), emit :rel
+          path("output/*.log.txt"), emit : log
        script:
           base = bed.baseName
           newbase=base+"_${chro}"
@@ -92,10 +94,11 @@ process GemmaBimbamRel{
        errorStrategy 'retry'
        maxRetries 10
        input:
-         tuple val(chro), path(bimbam), path(ind), path(listpos)
+         tuple val(chro), path(bimbam), path(ind),path(annotation),path(listpos)
        publishDir "${params.output_dir}/gemma/rel", mode:'copy'
        output:
-          tuple val(chro),path("output/${base}.*XX.txt")
+          tuple val(chro),path("output/${base}.*XX.txt"), emit :rel
+          path("output/*.log.txt"), emit : log
        script:
           tmp=bimbam.baseName
           base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
@@ -103,8 +106,8 @@ process GemmaBimbamRel{
           """
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
           cat $ind|awk '{print 0.2}' > pheno
-          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro
-          ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1
+          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro --annotation annotation.txt
+          ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1 -a annotation.txt
           """
 }
 

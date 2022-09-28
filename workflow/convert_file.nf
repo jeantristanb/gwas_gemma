@@ -277,40 +277,20 @@ process formatvcfinbimbam{
      tuple val(chro), path(vcf)
   publishDir "${params.output_dir}/format/bimbam", mode:'copy'
   output :
-     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
+     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}"), path(annotation)
   script :
     headvcf=vcf.baseName
     Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
     chroparam=(chro!=-1) ?  " --regions $chro" : ""
     fileind=Ent+".ind"
+     annotation=Ent+".annotation"
     """
     zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
     bcftools index -f $vcf
     ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    awk '{print \$1}' ${Ent}.bimbam|awk -F":" '{print \$0", "\$2", "\$3}' > $annotation
     """
 }
 
-process formatvcfinbimbam_ind{
-  label 'py3utils'
-  cpus params.max_plink_cores
-  memory params.plink_mem_req
-  time   params.big_time
-  input :
-     tuple val(chro), path(vcf), path(fileind)
-  publishDir "${params.output_dir}/format/bimbam", mode:'copy'
-  output :
-     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}")
-  script :
-    headvcf=vcf.baseName
-    Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
-    chroparam=(chro!=-1) ?  " --regions $chro" : ""
-    fileind=Ent+".ind"
-    """
-    zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
-    keep_vcfiid.r --data $fileind --vcf $vcf --out sample_vcf.keep
-    bcftools index $vcf
-    ${params.bcftools_bin} view --samples-file sample_vcf.keep -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
-    """
-}
 
 

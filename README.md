@@ -5,11 +5,11 @@
 ### plink : 
  * `input_pat`
  * `input_dir`
-  * `bfile` : 
+ * `bfile` :
 
 ### vcf :
  * `list_vcf` : ""
-   * `file_listvcf`  : ""
+ * `file_listvcf`  : ""
  
 
 ### ref fasta
@@ -26,8 +26,7 @@
  * `score_imp` [default INFO]
  * `unzip_zip` : for vcf if there is zip and password [0]
  * `unzip_password` = ""
- * .statfreq_vcf="%AN %AC"
-
+ * `statfreq_vcf` "%AN %AC"
 
 
 ## filter 
@@ -48,19 +47,27 @@
 * `vcfftools_bin` [default : 'vcftools']
 * `gemma_bin`  [default :"gemma"]
 * `qctoolsv2_bin` ["qctool"]
-* bcftools_bin [default "bcftools"]
+* `bcftools_bin` [default "bcftools"]
 
 ## gemma parameter
  * performed gemma on dosage ? `dosage` [default: 0 ]
- *  `gemma_multi`  : split by chromosome
+ * `gemma_multi`  : split by chromosome
  * `gemma_mem_req` : memory for gemma "6GB"
  * `gemma_mem_req_rel` : memory for relatdness
  * `gemma_mat_rel` : [default : ""]
  * `gemma_num_cores` [cpus for gemma default : 8]
  * `gemma_loco`  : performed a loco with gemma yes : 1, no 0 [ default :0 ]
 
-##  phenotype 
- * `pheno` : phenotype
+##  phenotypes
+* `pheno` : list phenotype of 
+  * pheno transformation, 
+    * list of function of R (log, log2, log10, exp), see ?Math 
+    * other function : invnorm (inverse normal rank )
+    * `pheno_tr_fct` : transform variable before residual : [""]
+    * `phenores_tr_fct` : transform variable after build residual [""]
+  * `pheno_residuals` : computed residuals  [default : 1]
+  * `addpcs` : add n pcs , value of pcs number [default 0]
+* `data` : phenotype and covairiable file 
 
 
 ## tocheck 

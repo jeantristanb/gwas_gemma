@@ -75,13 +75,14 @@ workflow getsnpincluderelat{
 
 process splitbimbamchro{
         input :
-          tuple val(chro), path(bimbam), path(bimbam_ind)
+          tuple val(chro), path(bimbam), path(bimbam_ind), path(annotation)
          output :
-          tuple val(chro), path("$newfile"), path(bimbam_ind)
+          tuple val(chro), path("$newfile"), path(bimbam_ind),  path(annotation)
         script :
           newfile = bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.bimbam'
+          annotation= bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.annotation'
           """
-          listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile
+          listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile --annotation $annotation
           """
 }
 
@@ -91,14 +92,15 @@ process mergebimbamrel{
     path(listind)
     path(filepos)
   output :
-    tuple path(subbimbam), path("listind.bimbam.out")
+    tuple path(subbimbam), path("listind.bimbam.out"), path(annotation)
   script :
     allbimbam=listbimam.join(',')
     subbimbam='allrelpos.bimbam'
     subbimbamnd='allrelpos.ind'
+    annotation="annotation.txt"
     """
      cp ${listind[0]} listind.bimbam.out
-     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam
+     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam --annotation $annotation
     """
 }
 
