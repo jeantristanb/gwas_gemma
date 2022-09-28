@@ -35,7 +35,7 @@ workflow subsample_snp_rel{
 
 process getGemmaRelAll {
        label 'gemma'
-       cpus params.gemma_num_cores
+       cpus params.gemma_num_cores_rel
        maxForks params.max_forks
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
@@ -51,7 +51,7 @@ process getGemmaRelAll {
           base = bed.baseName
           famfile=base+".fam"
           """
-          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
+          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}
           cat $famfile |awk '{print \$1"\t"\$2"\t"0.2}' > pheno
           ${params.gemma_bin} -bfile $base  -gk ${params.gemma_relopt} -o $base -p pheno -n 3 -km 2
           """
@@ -59,7 +59,7 @@ process getGemmaRelAll {
 
 process getGemmaRelChro{
        label 'gemma'
-       cpus params.gemma_num_cores
+       cpus params.gemma_num_cores_rel
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxForks params.max_forks
@@ -76,7 +76,7 @@ process getGemmaRelChro{
           newbase=base+"_${chro}"
           famfile=base+".fam"
           """
-          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
+          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}
           cat $famfile |awk '{print \$1"\t"\$2"\t"0.2}' > pheno
           plink -bfile $base --not-chr $chro --keep-allele-order --make-bed -out $newbase
           ${params.gemma_bin} -bfile $newbase  -gk ${params.gemma_relopt} -o $newbase -p pheno -n 3 -km 2
@@ -87,7 +87,7 @@ process getGemmaRelChro{
 
 process GemmaBimbamRel{
        label 'gemma'
-       cpus params.gemma_num_cores
+       cpus params.gemma_num_cores_rel
        time params.big_time
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        maxForks params.max_forks
@@ -104,7 +104,7 @@ process GemmaBimbamRel{
           base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
           outposbimbam="newbimbam"
           """
-          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
+          export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}
           cat $ind|awk '{print 0.2}' > pheno
           listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro --annotation annotation.txt
           ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1 -a annotation.txt

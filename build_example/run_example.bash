@@ -15,6 +15,20 @@ fasta=~/Travail/git/h3agwas_buildexample/data2/formatimput/hg19.fa.gz
 
 #head="sr1_loco0_dosage0_vcfi"
 
+if [ $head == "sr1_loco0_dosage1_vcfi_covnores" ]
+then
+~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 0  $workdir 
+exit $?
+fi
+
+if [ $head == "sr1_loco0_dosage1_vcfi_covres" ]
+then
+~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 1  $workdir 
+exit $?
+fi
+
+
+
 ## no loco, format 1 vcf in plink, no dosage used, independant sample relatdness limited position to file_snp_rel
 if [ $head == "sr1_loco0_dosage0_vcfi" ]
 then

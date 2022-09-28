@@ -55,6 +55,8 @@ runsim sr1_loco1_dosage1_vcfi
 runsim sr1_loco0_dosage0_vcfmulti
 runsim sr1_loco1_dosage0_vcfi
 runsim sr1_loco0_dosage1_vcfi
+runsim sr1_loco0_dosage1_vcfi_covres
+runsim sr1_loco0_dosage1_vcfi_covnores
 
 
 for filelog in `ls *.log`
