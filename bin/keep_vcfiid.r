@@ -11,11 +11,12 @@ option_list = list(
 );
 
 opt_parser = OptionParser(option_list=option_list);
-args = parse_args(opt_parser);
+opt= parse_args(opt_parser);
 
 
 ## read fam file 
-Data<-read.table(opt[['data']], stringsAsFactors=F);Data<-Data[,c(1,2)];names(Data)<-c('FID','IID');Data$FID_I<-Data$FID;Data$IID_I<-Data$IID
+
+Data<-read.table(opt[['data']], stringsAsFactors=F);print(head(Data));Data<-Data[,c(1,2)];names(Data)<-c('FID','IID');Data$FID_I<-Data$FID;Data$IID_I<-Data$IID
 
 vcf_name<-readLines(opt[['vcf']])
 ## case 1 
@@ -36,7 +37,6 @@ quit("no", 5)
 }
 
 bestsol<-which.max(c(nIID,nFID,nFIDIID))
-head(CompositFIDIID)
 if(bestsol==1)writeLines(vcf_name[baliseIID], con=opt[['out']])
 if(bestsol==2)writeLines(vcf_name[baliseFID], con=opt[['out']])
 if(bestsol==3)writeLines(vcf_name[baliseFIDIID], con=opt[['out']])

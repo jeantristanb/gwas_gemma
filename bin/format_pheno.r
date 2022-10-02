@@ -15,7 +15,7 @@ getstat<-function(x, head){
 
 getstatsumm<-function(datapheno, listnewval, filestat){
  Cmt<-1
- for( head in listnewval[-c(1:2)]){
+ for(head in listnewval){
   stat2<-getstat(datapheno[, head], head)
   if(Cmt==1)StatF<-stat2
   else StatF<-rbind(StatF, stat2)

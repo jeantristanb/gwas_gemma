@@ -57,7 +57,8 @@ process subsample_snps{
   balisethin=(params.thin_snp_rel=="") ? "0" : "1"
   """
   sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
-  plink --bfile $bfile --threads $max_plink_cores --autosome $rangeexclude --indep-pairwise ${params.plink_indep_pairwise} --out $outfile $maf --keep indkeep --keep-allele-order $rangeinclude
+  plink --bfile $bfile --threads $max_plink_cores --autosome $rangeexclude --out $outfile $maf --keep indkeep --keep-allele-order $rangeinclude --make-bed
+  plink --bfile $outfile --threads $max_plink_cores --indep-pairwise ${params.plink_indep_pairwise} -out $outfile
   if [ "$balisethin" == "1" ]
   then
    cp ${outfile}.prune.in ${outfile}.prune.tmp.in

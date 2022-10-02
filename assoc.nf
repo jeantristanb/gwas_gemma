@@ -226,6 +226,7 @@ include {format_vcfinplk} from './workflow/convert_file.nf'
 include {wf_prepare_pheno} from './workflow/pheno.nf'
 include {splitbimbamchro} from './workflow/utils.nf'
 include {formatvcfinbimbam} from './workflow/convert_file.nf'
+include {formatvcfinbimbam_ind} from './workflow/convert_file.nf'
 include {mergebimbamrel} from './workflow/utils.nf'
 include {strmem} from './workflow/utils.nf'
 include {get_chrovcf} from './workflow/vcf.nf'
@@ -291,18 +292,19 @@ workflow gwasgemma{
 		 }
 		 
 	     }else if(params.file_vcf!=""){
-		 formatvcfinbimbam(channel.from(-1).combine(filevcf))
+		 //formatvcfinbimbam(channel.from(-1).combine(filevcf))
+		 formatvcfinbimbam_ind(channel.from(-1).combine(filevcf).combine(filepheno))
 		 if(params.gemma_loco==1){
-		    splitbimbamchro(listchro_ch.combine(formatvcfinbimbam.out.flatMap{[it[1],it[2],it[3]]}.collect()))
+		    splitbimbamchro(listchro_ch.combine(formatvcfinbimbam_ind.out.bimbam.flatMap{[it[1],it[2],it[3]]}.collect()))
 		    bimbamfile=splitbimbamchro.out
-		    bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2], it[3]]}.collect()
+		    bimbamfilerel=formatvcfinbimbam_ind.out.bimbam.flatMap{[it[1],it[2], it[3]]}.collect()
 		 }else{
-		 bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2], it[3]]}.collect()
-		 bimbamfilerel=formatvcfinbimbam.out.flatMap{[it[1],it[2], it[3]]}.collect()
+		 bimbamfile=formatvcfinbimbam_ind.out.bimbam.flatMap{[it[1],it[2], it[3]]}.collect()
+		 bimbamfilerel=formatvcfinbimbam_ind.out.bimbam.flatMap{[it[1],it[2], it[3]]}.collect()
 		 }
 	     }else if(params.listfile_bimbam!=""){
 		  chrobimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}
-		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
+		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true)).combine(channel.of(""))
 		  bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
 		  file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
 		  ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
@@ -312,13 +314,14 @@ workflow gwasgemma{
 		 bimbamfilerel=mergebimbamrel.out
 	     }else if(params.listfile_vcf!=""){
 		 get_chrovcf(listfilevcf)
-		 formatvcfinbimbam(get_chrovcf.out.chro_vcf)
-		 file_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[1]}.collect()
-		 ind_ch_bimbam=formatvcfinbimbam.out.flatMap{it->it[2]}.collect()
+		 //formatvcfinbimbam(get_chrovcf.out.chro_vcf)
+		 formatvcfinbimbam_ind(get_chrovcf.out.chro_vcf.combine(filepheno))
+		 file_ch_bimbam=formatvcfinbimbam_ind.out.bimbam.flatMap{it->it[1]}.collect()
+		 ind_ch_bimbam=formatvcfinbimbam_ind.out.bimbam.flatMap{it->it[2]}.collect()
 		 mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
 		 bimbamfilerel=mergebimbamrel.out
-		 if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam.out.flatMap{[it[1],it[2], it[3]].combinations()}
-		 else bimbamfile=formatvcfinbimbam.out
+		 if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam_ind.out.flatMap{[it[1],it[2], it[3]].combinations()}
+		 else bimbamfile=formatvcfinbimbam_ind.out.bimbam
 	     }else{
 	    println "No file gave for dosage, vcf imputation or bimbam file";
 	    System.exit(-2);
