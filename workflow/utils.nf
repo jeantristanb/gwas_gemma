@@ -97,7 +97,7 @@ process mergebimbamrel{
     allbimbam=listbimam.join(',')
     subbimbam='allrelpos.bimbam'
     subbimbamnd='allrelpos.ind'
-    annotation="annotation.txt"
+    annotation="annot_rel.txt"
     """
      cp ${listind[0]} listind.bimbam.out
      listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam --annotation $annotation

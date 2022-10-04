@@ -128,6 +128,7 @@ params.gemma_num_cores_rel = 8
 params.gemma_loco = 0
 params.file_bimbam = ""
 params.listfile_bimbam = ""
+params.listfile_bimbam_annot = ""
 params.listfile_vcf= ""
 
 params.dosage = 0 
@@ -303,8 +304,14 @@ workflow gwasgemma{
 		 bimbamfilerel=formatvcfinbimbam_ind.out.bimbam.flatMap{[it[1],it[2], it[3]]}.collect()
 		 }
 	     }else if(params.listfile_bimbam!=""){
+                  println("used file bimbam give by user")
+                  if(params.listfile_bimbam_annot!=""){
+		    bimbam_annot=channel.from(file(params.listfile_bimbam_annot).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}
+                  }else{
+		    bimbam_annot=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}.combine(channel.fromPath("${dummy_dir}/07"))
+                  }
 		  chrobimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}
-		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true)).combine(channel.of(""))
+		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true)).join(bimbam_annot)
 		  bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
 		  file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
 		  ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
@@ -362,11 +369,12 @@ workflow gwasgemma{
 
 workflow {
       bfile=""
-       if(params.input_dir!="" && params.input_pat!="") bfile=params.input_dir+"/"+params.input_pat else{
+      if(params.input_dir!="" && params.input_pat!="") bfile=params.input_dir+"/"+params.input_pat 
+      else{
          if(params.bfile=="" && (params.file_vcf!="" || params.listfile_vcf!="")){
-         println("bfile params or input_dir and output_dir not initialise")
-         bfile=params.bfile
-         }elsebfile=params.bfile
+          println("bfile params or input_dir and output_dir not initialise")
+          bfile=params.bfile
+         } else bfile=params.bfile
         }
 
 	 /*bedfile*/
@@ -378,6 +386,10 @@ workflow {
 	   println("to format vcf in plink need a fasta file : args --reffasta null")
 	      exit 1
 	  }
+          if(params.file_vcf=="" && params.listfile_vcf==""){
+	      println("error : if no file vcf allowed (--file_vcf) or (--listfile_vcf), plink file must initalise (--input_dir / input_pat or --bfile)")
+	      exit 10
+          }
 	  format_vcfinplk()
 	  bedfileI=format_vcfinplk.out.plk
 	 }

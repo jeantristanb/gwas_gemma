@@ -43,12 +43,13 @@ process doGemmabimbam{
           out                = "$our_pheno-$bimbamhead"
           covar_opt_gemma    =  (covariates=="") ? "" :  " -c $gemma_covariate " 
           dir_gemma          =  "gemma"
+          annotation2        = (annotation=="") ? "" : " -a $annotation "
 
           """
           all_covariate.py --data  $data --bimbam_ind  $bimbam_ind $covariate_option --cov_out $gemma_covariate \
           --pheno $our_pheno2 --phe_out ${phef} --form_out 5
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores}
-          ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm ${params.gemma_lmm}  -n 1 -p $phef -o $out -maf ${params.cut_maf} -a $annotation
+          ${params.gemma_bin} -g $bimbam ${covar_opt_gemma}  -k $rel_matrix -lmm ${params.gemma_lmm}  -n 1 -p $phef -o $out -maf ${params.cut_maf} 
           mv output ${dir_gemma}
           """
 }

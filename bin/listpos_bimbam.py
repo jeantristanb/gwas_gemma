@@ -72,3 +72,4 @@ for filebimbam in listbimbam:
  readbimbam.close()
 
 writebimbam.close()
+writeannotation.close()

@@ -1,3 +1,5 @@
+
+include {strmem} from './utils.nf'
 plink_mem_req = params.plink_mem_req
 other_mem_req = params.other_process_mem_req
 max_plink_cores = params.max_plink_cores
@@ -181,7 +183,9 @@ process AddedCM{
 
 process MergePlink{
   cpus params.max_plink_cores
-  memory params.plink_mem_req
+  memory { strmem(params.plink_mem_req) + 5.GB * (task.attempt -1) }
+  errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+  maxRetries 10
   time   params.big_time
   input :
        path(lplk)
@@ -230,7 +234,7 @@ workflow format_vcfinplk{
        list_vcf = Channel.fromPath(params.file_vcf, checkIfExists:true)
     }
    }
-   if(params.do_stat){
+   if(params.do_stat && params.file_vcf!=''){
      computedstat(list_vcf)
      dostat(computedstat.out.collect())
    }

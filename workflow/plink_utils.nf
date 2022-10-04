@@ -6,6 +6,9 @@ max_plink_cores = params.max_plink_cores
 
 process plinkextractpos{
  cpus max_plink_cores
+ memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
+ errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+ maxRetries 10
  input:
   tuple path(bed), path(bim), path(fam)
   path(listsnp)
@@ -24,6 +27,9 @@ process plinkextractpos{
 
 process plinkextractind{
  cpus max_plink_cores
+ memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
+ errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+ maxRetries 10
  input :
   tuple path(bed), path (bim), path(fam)
   path(indkeep)
@@ -41,6 +47,9 @@ process plinkextractind{
 
 process subsample_snps{
  cpus max_plink_cores
+ memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
+ errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+ maxRetries 10
  input:
   tuple path(bed), path(bim), path(fam)
   path(snp_exclude_bed)
@@ -69,8 +78,9 @@ process subsample_snps{
 
 process computeN_plink{
   label 'R'
-  cpus params.max_plink_cores
-  memory { strmem(other_mem_req) + 5.GB * (task.attempt -1) }
+  cpus max_plink_cores
+  memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
+  errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
   maxRetries 10
   input :
     tuple path(data), path(bed), path(bim), path(fam), val(this_pheno),val(covar)

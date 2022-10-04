@@ -102,12 +102,13 @@ process GemmaBimbamRel{
        script:
           tmp=bimbam.baseName
           base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
-          outposbimbam="newbimbam"
+          outposbimbam="posbimbam_"+chro
+          annot="sub_annot_"+chro+".txt"
           """
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}
           cat $ind|awk '{print 0.2}' > pheno
-          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro --annotation annotation.txt
-          ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1 -a annotation.txt
+          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro --annotation $annot
+          ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1 -a $annot
           """
 }
 

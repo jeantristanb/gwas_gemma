@@ -108,3 +108,23 @@ then
 exit $?
 fi
 
+
+if [ ! -f h3agwas-examples/utils/listbimbam ]
+then
+rm -f h3agwas-examples/utils/listbimbam h3agwas-examples/utils/listbimbam_ind h3agwas-examples/utils/listbimbam_annot
+for chro in `seq 1 22`
+do
+filebimbam=h3agwas-examples/data/imputed/bimbam_chro/$chro".pbwt"*.bimbam  
+echo $chro" "$filebimbam >>h3agwas-examples/utils/listbimbam
+bimbam_annot=h3agwas-examples/data/imputed/bimbam_chro/$chro".pbwt"*.annotation 
+echo $chro" "$bimbam_annot >>h3agwas-examples/utils/listbimbam_annot
+done
+fi
+
+if [  $head == "sr1_loco1_dosage1_bimbammulti" ]
+then
+~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_ $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir --listfile_bimbam h3agwas-examples/utils/listbimbam  --file_bimbam_ind h3agwas-examples/data/imputed/bimbam_chro/1_sample_vcf.keep --bfile h3agwas-examples/data/imputed/imput_data.clean --gemma_mem_req_rel 20GB
+exit $?
+fi
+
+
