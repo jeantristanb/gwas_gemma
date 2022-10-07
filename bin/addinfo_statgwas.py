@@ -37,6 +37,7 @@ for File in listfile :
 
 print("--------- end read info file ------")
 writestat=open(args.out, 'w')
+writestaterror=open(args.out+'.error', 'w')
 readstat=open(args.file_stat)
 header=readstat.readline().replace('\n','')
 spl_head=header.split()
@@ -46,5 +47,10 @@ writestat.write(header+"\tTyped\tINFO\n")
 for line in readstat :
   linei=line.replace('\n','')
   spl=linei.split()
-  writestat.write(linei+dicinfo[spl[poschr]][spl[posbp]])
+  try :
+     writestat.write(linei+dicinfo[spl[poschr]][spl[posbp]])
+  except :
+     print(spl[poschr]+"\t"+spl[posbp])
+     writestaterror.write(linei+'\tNA\n')
+     writestat.write(linei+'\tNA\n')
 
