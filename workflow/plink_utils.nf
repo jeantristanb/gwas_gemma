@@ -4,17 +4,15 @@ plink_mem_req = params.plink_mem_req
 other_mem_req = params.other_process_mem_req
 max_plink_cores = params.max_plink_cores
 
-process plinkextractpos{
+process plinkextractpos_multipheno{
  cpus max_plink_cores
  memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
  errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
  maxRetries 10
  input:
-  tuple path(bed), path(bim), path(fam)
-  path(listsnp)
-  path(indkeep)
+  tuple val(pheno),path(bed), path(bim), path(fam), path(listsnp),path(indkeep)
  output :
-  tuple path("${bfilef}.bed"), path("${bfilef}.bim"), path("${bfilef}.fam")
+  tuple val(pheno) path("${bfilef}.bed"), path("${bfilef}.bim"), path("${bfilef}.fam")
  script :
    bfile=bed.baseName
    bfilef=bfile+'_relsub'
@@ -24,6 +22,24 @@ process plinkextractpos{
    """
 }
 
+process plinkextractind{
+ cpus max_plink_cores
+ memory { strmem(plink_mem_req) + 5.GB * (task.attempt -1) }
+ errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
+ maxRetries 10
+ input :
+  tuple path(bed), path (bim), path(fam)
+  path(indkeep)
+ output :
+  tuple path("${outbed}.bed"), path("${outbed}.bim"), path("${outbed}.fam"), emit: filterind
+ script :
+  bfile=bed.baseName
+  outbed=bfile+"_subind"
+  """
+  sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
+  plink -bfile $bfile --keep-allele-order --make-bed -out $outbed --threads $max_plink_cores --keep $indkeep
+  """
+}
 
 process plinkextractind{
  cpus max_plink_cores
@@ -83,18 +99,20 @@ process subsample_snps_multipheno{
  input:
   tuple val(pheno), path(bed), path(bim), path(fam),  path(snp_exclude_bed), path(snp_include_bed), path(phenofile)
  output:
-  path("${outfile}.prune.in"), emit: subsample_snps_list
+  tuple val(pheno),path("${outfile}.prune.in"), emit: subsample_snps_list
+  tuple val(pheno),path("${pheno}.dataclean"), emit: data
  script:
   bfile=bed.baseName
   outfile="sub_indep_pairwise"
   rangeexclude=(params.snps_exclude_rel=="") ? "" : " --exclude range $snp_exclude_bed "
   rangeinclude=(params.snps_include_rel=="") ? "" : " --extract range $snp_include_bed "
   maf=(params.cut_maf_rel=="") ? "" : " --maf ${params.cut_maf_rel}"
+  covar=(params.covariates=="") ? "" : " --cov_list $params.covariates "
   balisethin=(params.thin_snp_rel=="") ? "0" : "1"
   """
   sed '1d' $indkeep | awk '{print \$1\"\\t\"\$2}' > indkeep
-  
-  plink --bfile $bfile --threads $max_plink_cores --autosome $rangeexclude --out $outfile $maf --keep indkeep --keep-allele-order $rangeinclude --make-bed
+  list_ind_nomissing.py --data $phenofile --inp_fam $fam $covar --pheno $pheno --dataout ${pheno}.dataclean --lindout ${pheno}.indclean
+  plink --bfile $bfile --threads $max_plink_cores --autosome $rangeexclude --out $outfile $maf --keep ${pheno}.indclean --keep-allele-order $rangeinclude --make-bed
   plink --bfile $outfile --threads $max_plink_cores --indep-pairwise ${params.plink_indep_pairwise} -out $outfile
   if [ "$balisethin" == "1" ]
   then

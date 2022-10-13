@@ -41,6 +41,19 @@ process checkposrsfile{
      """
 }
 
+process checkposrsfile_multipheno{
+  input :
+    tuple val(pheno), path(pos),path(bed), path(bim), path(fam)
+    val(out)
+  output :
+    tuple val(pheno). path("$out")
+  script :
+     """
+     check_filpos.py $pos $bim $out
+     """
+}
+
+
 /*check snp*/
 workflow getsnpbuilrelat{
  take :

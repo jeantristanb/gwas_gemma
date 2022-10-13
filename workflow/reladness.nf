@@ -4,7 +4,7 @@ max_plink_cores = params.max_plink_cores
 
 include {getsnpexcluderelat} from './utils.nf'
 include {getsnpincluderelat} from './utils.nf'
-include {checkposrsfile} from './utils.nf'
+include {checkposrsfile_multipheno} from './utils.nf'
 include {subsample_snps} from './plink_utils.nf'
 include {plinkextractpos} from './plink_utils.nf'
 include {strmem} from './utils.nf'
@@ -45,14 +45,14 @@ workflow subsample_snp_rel_multipheno{
   }else{
    getsnpexcluderelat(ch_plkfile)
    getsnpincluderelat(ch_plkfile)
-   subsample_snps_multipheno(ch_plkfile.combine(getsnpexcluderelat.out.pos_chr).combine(getsnpincluderelat.out.pos_chr).combine(ch_pheno))
-   checkposrsfile(subsample_snps.out.subsample_snps_list, ch_plkfile,'list_posrs_rel')
+   subsample_snps_multipheno(list_pheno.combine(ch_plkfile).combine(getsnpexcluderelat.out.pos_chr).combine(getsnpincluderelat.out.pos_chr).combine(ch_pheno))
+   checkposrsfile_multipheno(subsample_snps.out.subsample_snps_list.combine(ch_plkfile).combine('list_posrs_rel'))
    snpfilers=checkposrsfile.out
   }
- plinkextractpos(ch_plkfile, snpfilers, ch_pheno)
+ plinkextractpos_multipheno(ch_plkfile.join(snpfilers).join(subsample_snps_multipheno.out.data)
  emit:
    bed_pos_rel=snpfilers
-   plk_rel=plinkextractpos.out
+   plk_rel=plinkextractpos_multipheno.out
 } 
 
 process getGemmaRelAll {

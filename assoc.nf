@@ -240,7 +240,7 @@ include {doGemma} from './workflow/gemma.nf'
 include {addNtoStatGemma} from './workflow/gemma.nf'
 include {computeN_plink} from './workflow/plink_utils.nf'
 include {plinkextractind} from './workflow/plink_utils.nf'
-include {subsample_snp_rel} from './workflow/reladness.nf'
+include {subsample_snp_rel_multipheno} from './workflow/reladness.nf'
 include {getListeChro} from './workflow/utils.nf'
 include {cleanvcfwf} from './workflow/vcf.nf'
 include {format_summarystat_gemmadosage} from './workflow/gemma.nf'
@@ -269,17 +269,18 @@ process getreport{
 
 workflow gwasgemma{
 	  take :
-	   ch_plkfile
-	   ch_plkfile_rel
 	   listchro
-	   filepheno
-	   filers
-	   listpheno
-	   bed_file_rel
-	   filevcf
-	   listfilevcf
-	   covariates
+	   ch_plkfile_rel
+	   //ch_plkfile
+	   //filepheno
+	   //filers
+	   //listpheno
+	   //bed_file_rel
+	   //filevcf
+	   //listfilevcf
+	   //covariates
 	 main :
+           wf_prepare_multipheno(phenofile, ch_plkfile_rel)
 	   listchro_ch=listchro.flatMap{ list_str -> list_str.split() }
 	   if(params.dosage==1){
 	     if(params.file_bimbam!=""){
@@ -396,12 +397,11 @@ workflow {
 	 if(params.rs_list=="")rsfile=Channel.fromPath("${dummy_dir}/06", checkIfExists:true)
 	 else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
 	 phenofile=Channel.fromPath(params.data, checkIfExists:true)
-	 plinkextractind(bedfileI,phenofile)
-	 subsample_snp_rel(plinkextractind.out.filterind,phenofile)
-	 getListeChro(plinkextractind.out.filterind)
-         wf_prepare_pheno(phenofile, subsample_snp_rel.out.plk_rel)
+	 //plinkextractind(bedfileI,phenofile)
+	 getListeChro(bedfileI)
+	 subsample_snp_rel_multipheno(bedfileI,phenofile)
+         //wf_prepare_multipheno(phenofile, subsample_snp_rel.out.plk_rel)
 	 //listpheno = newNamePheno(params.pheno)
-         listpheno=wf_prepare_pheno.out.pheno.flatMap{it->it.split(',')}
 	 cleanvcfwf()
 	 gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out,  wf_prepare_pheno.out.data, rsfile,listpheno, subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, wf_prepare_pheno.out.covar)
 
