@@ -92,7 +92,6 @@ process computeN_plink{
     headout=our_pheno2+'_statn'
     plkf=bed.baseName
     covar2 = (covar=="") ? "" : " --covar $covar "
-
     """
     formatpheno_plink.r --data $data --pheno ${our_pheno} --out pheno_plink --binary 0  $covar2
     plink -bfile $plkf --keep pheno_plink --freq -out $headout"_tmp" --keep-allele-order --threads ${params.max_plink_cores}
