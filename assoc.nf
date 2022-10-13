@@ -397,7 +397,6 @@ workflow {
 	 else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
 	 phenofile=Channel.fromPath(params.data, checkIfExists:true)
 	 plinkextractind(bedfileI,phenofile)
-         list_pheno=channel.fromPath(params.pheno.split(','))
 	 subsample_snp_rel(plinkextractind.out.filterind,phenofile)
 	 getListeChro(plinkextractind.out.filterind)
          wf_prepare_pheno(phenofile, subsample_snp_rel.out.plk_rel)

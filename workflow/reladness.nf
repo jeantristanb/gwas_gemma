@@ -16,6 +16,7 @@ workflow subsample_snp_rel{
   ch_plkfile
   ch_pheno
  main :
+  list_pheno=channel.fromPath(params.pheno.split(','))
   if(params.listsnps_buildrelat!=""){
     getsnpbuilrelat(ch_plkfile)
     snpfilers=getsnpbuilrelat.out.posfile
@@ -32,6 +33,27 @@ workflow subsample_snp_rel{
    plk_rel=plinkextractpos.out
 }
 
+workflow subsample_snp_rel_multipheno{
+ take :
+  ch_plkfile
+  ch_pheno
+ main :
+  list_pheno=channel.fromPath(params.pheno.split(','))
+  if(params.listsnps_buildrelat!=""){
+    getsnpbuilrelat(ch_plkfile)
+    snpfilers=list_pheno.combine(getsnpbuilrelat.out.posfile)
+  }else{
+   getsnpexcluderelat(ch_plkfile)
+   getsnpincluderelat(ch_plkfile)
+   subsample_snps_multipheno(ch_plkfile.combine(getsnpexcluderelat.out.pos_chr).combine(getsnpincluderelat.out.pos_chr).combine(ch_pheno))
+   checkposrsfile(subsample_snps.out.subsample_snps_list, ch_plkfile,'list_posrs_rel')
+   snpfilers=checkposrsfile.out
+  }
+ plinkextractpos(ch_plkfile, snpfilers, ch_pheno)
+ emit:
+   bed_pos_rel=snpfilers
+   plk_rel=plinkextractpos.out
+} 
 
 process getGemmaRelAll {
        label 'gemma'
