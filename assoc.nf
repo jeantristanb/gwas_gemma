@@ -305,6 +305,7 @@ workflow gwasgemma{
 		 }
 	     }else if(params.listfile_bimbam!=""){
                   println("used file bimbam give by user")
+                  //Oct-18 15:06:10.428 [Actor Thread 7] WARN  nextflow.processor.TaskProcessor - Input tuple does not match input set cardinality declared by process `gwasgemma:doGemmabimbam` -- offending value: [-1, /spaces/jeantristan/GWAS/GWAS_CKD/Collaboration_segun/gwas/All/ark/fe/a821c633fa18fc1b98c97cf15f33b7/output/allrelpos_-1.cXX.txt, /home/jeantristan/Travail/GWAS/GWAS_CKD/Collaboration_segun/gwas/All/ark/ark_All/format/bimbam/10.vcf_10.bimbam, /home/jeantristan/Travail/GWAS/GWAS_CKD/Collaboration_segun/gwas/All/ark/ark_All/format/bimbam/10_sample_vcf.keep, /spaces/jeantristan/GWAS/GWAS_CKD/Collaboration_segun/gwas/All/ark/14/458fd6838d5a1db3c4a5c861c83b31/ark_filter_format.pheno, /home/jeantristan/Travail/git/gwas_ckdawigen/input/06, egfr_tr, , gemma/]
                   if(params.listfile_bimbam_annot!=""){
 		    bimbam_annot=channel.from(file(params.listfile_bimbam_annot).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}
                   }else{
@@ -316,7 +317,7 @@ workflow gwasgemma{
 		  file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
 		  ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
 		  mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
-		 if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2]].combinations()}
+		 if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2], it[3]].combinations()}
 		 else bimbamfile=bimbamfileI
 		 bimbamfilerel=mergebimbamrel.out
 	     }else if(params.listfile_vcf!=""){
