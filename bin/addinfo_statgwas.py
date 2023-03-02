@@ -50,7 +50,6 @@ for line in readstat :
   try :
      writestat.write(linei+dicinfo[spl[poschr]][spl[posbp]])
   except :
-     print(spl[poschr]+"\t"+spl[posbp])
      writestaterror.write(linei+'\tNA\n')
      writestat.write(linei+'\tNA\n')
 

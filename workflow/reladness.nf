@@ -102,7 +102,7 @@ process GemmaBimbamRel{
        script:
           tmp=bimbam.baseName
           base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
-          outposbimbam="posbimbam_"+chro
+          outposbimbam="posbimbam_"+chro+'.bimbam.gz'
           annot="sub_annot_"+chro+".txt"
           """
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}

@@ -79,7 +79,7 @@ process splitbimbamchro{
          output :
           tuple val(chro), path("$newfile"), path(bimbam_ind),  path(annotation)
         script :
-          newfile = bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.bimbam'
+          newfile = bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.bimbam.gz'
           annotation= bimbam.baseName.replaceAll(/.vcf$/,'')+"_" + chro+'.annotation'
           """
           listpos_bimbam.py --bimbam $bimbam --include_chr $chro --out $newfile --annotation $annotation
@@ -95,7 +95,7 @@ process mergebimbamrel{
     tuple path(subbimbam), path("listind.bimbam.out"), path(annotation)
   script :
     allbimbam=listbimam.join(',')
-    subbimbam='allrelpos.bimbam'
+    subbimbam='allrelpos.bimbam.gz'
     subbimbamnd='allrelpos.ind'
     annotation="annot_rel.txt"
     """
