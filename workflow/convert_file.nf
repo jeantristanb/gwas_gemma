@@ -281,7 +281,7 @@ process formatvcfinbimbam{
      tuple val(chro), path(vcf)
   publishDir "${params.output_dir}/format/bimbam", mode:'copy'
   output :
-     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}"), path(annotation)
+     tuple val(chro),path("${Ent}.bimbam.gz"), path("${fileind}"), path(annotation)
   script :
     headvcf=vcf.baseName
     Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
@@ -291,8 +291,9 @@ process formatvcfinbimbam{
     """
     zcat $vcf |head -10000|grep "#"|tail -1| awk '{for(Cmt=10;Cmt<=NF;Cmt++)print \$Cmt}' > $fileind
     bcftools index -f $vcf
-    ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    ${params.bcftools_bin} view -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf | awk -F'\\t' '{if (substr(\$1,1,1) ~ /^#/){print \$0}else{A2=\$4;A1=\$5;\$4=A1;\$5=A2;print \$0}}' OFS='\\t'   |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
     awk '{print \$1}' ${Ent}.bimbam|awk -F":" '{print \$0", "\$2", "\$3}' > $annotation
+    gzip -9 ${Ent}.bimbam
     """
 }
 
@@ -310,6 +311,7 @@ process extractvcfind_inpheno{
     """ 
 }
 
+//10	308491	rs10508202	T	G	
 process formatvcfinbimbam_ind_proc{
   label 'py3utils'
   cpus params.max_plink_cores
@@ -319,7 +321,7 @@ process formatvcfinbimbam_ind_proc{
      tuple val(chro), path(vcf), path(fileind)
   publishDir "${params.output_dir}/format/bimbam", mode:'copy'
   output :
-     tuple val(chro),path("${Ent}.bimbam"), path("${fileind}"), path(annotation)
+     tuple val(chro),path("${Ent}.bimbam.gz"), path("${fileind}"), path(annotation)
   script :
     headvcf=vcf.baseName
     Ent=(chro!=-1) ? "${headvcf}_${chro}" :  "$headvcf"
@@ -327,8 +329,9 @@ process formatvcfinbimbam_ind_proc{
     annotation=Ent+".annotation"
     """
     bcftools index $vcf
-    ${params.bcftools_bin} view --samples-file $fileind -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf |${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
+    ${params.bcftools_bin} view --samples-file $fileind -i '${params.score_imp}>${params.min_scoreinfo}' $chroparam $vcf | awk -F'\\t' '{if (substr(\$1,1,1) ~ /^#/){print \$0}else{A2=\$4;A1=\$5;\$4=A1;\$5=A2;print \$0}}' OFS='\\t'     | ${params.qctoolsv2_bin} -g - -vcf-genotype-field ${params.genotype_field} -ofiletype bimbam_dosage -og ${Ent}.bimbam -filetype vcf
     awk '{print \$1}' ${Ent}.bimbam|awk -F":" '{print \$0", "\$2", "\$3}' > $annotation
+    gzip -9 ${Ent}.bimbam
     """
 }
 

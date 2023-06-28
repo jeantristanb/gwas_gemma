@@ -69,7 +69,7 @@ dummy_dir="${projectdir}/input"
 
 params.queue      = 'batch'
 params.work_dir   = "$HOME/h3agwas"
-params.input_dir  = "${params.work_dir}/input"
+params.input_dir  = ""
 params.output_dir = "${params.work_dir}/output"
 params.output_pat= "output"
 params.bfile= ""
@@ -208,7 +208,7 @@ params.other_process_mem_req="10GB"
 
 
 
-params.input_pat  = 'raw-GWA-data'
+params.input_pat  = ''
 
 params.sexinfo_available = "false"
 
@@ -376,7 +376,8 @@ workflow {
           bfile=params.bfile
          } else bfile=params.bfile
         }
-
+        println bfile
+       //sys,exit()
 	 /*bedfile*/
 	 if(bfile!=""){
 	   bedfileI=Channel.fromPath("${bfile}.bed",checkIfExists:true).combine(Channel.fromPath("${bfile}.bim",checkIfExists:true)).combine(Channel.fromPath("${bfile}.fam",checkIfExists:true))

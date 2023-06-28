@@ -21,10 +21,10 @@ DataPcs<-merge(Data, Pcs, by=c(1,2))
 write.table(DataPcs, file=opt[['out']], sep='\t', col.names=T, row.names=F, quote=F)
 
 listcovar=""
-if(!is.null(opt[['covar']]))listcovar=paste(listcovar,",",sep='')
+if(!is.null(opt[['covar']]))listcovar=paste(opt[['covar']],",",sep='')
 listpcs<-paste(paste('Pcs_',1:(ncol(Pcs)-2),sep=''), collapse=',')
 
-writeLines(paste(listcovar,listpcs), con=paste(opt[['out']], '.covar', sep=''))
+writeLines(paste(listcovar,listpcs,sep=''), con=paste(opt[['out']], '.covar', sep=''))
 
 
 
