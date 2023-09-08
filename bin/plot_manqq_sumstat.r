@@ -40,7 +40,12 @@ if(!is.null(opt[['af_header']])){
 }else {
 alldataqq<-alldata
 }
-
+listhead<-c(opt[['chr_header']], opt[['bp_header']], opt[['p_header']])
+if(all(listhead %in% names(alldataqq))==F){
+cat('header not found', paste(listhead[!(listhead %in% names(alldataqq))], collapse=','),'\nexit\n')
+q('n')
+}
+alldataqq<-na.omit(alldataqq[,..listhead])
 
 png(paste(out,'_qq.png',sep=''))
 fastqq (alldataqq[[opt[['p_header']]]])
