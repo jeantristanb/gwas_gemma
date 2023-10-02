@@ -14,6 +14,8 @@ option_list = list(
               help="phenotype in data", metavar="character"),
   make_option(c( "--af_header"), type="character",
               help="phenotype in data", metavar="character"),
+  make_option(c( "--rs_header"), type="character",
+              help="phenotype in data", metavar="character"),
   make_option(c( "--maf"), 
               help="phenotype in data", type="numeric", default=0.01),
   make_option(c( "--out"), type="character",
@@ -40,7 +42,7 @@ if(!is.null(opt[['af_header']])){
 }else {
 alldataqq<-alldata
 }
-listhead<-c(opt[['chr_header']], opt[['bp_header']], opt[['p_header']])
+listhead<-c(opt[['chr_header']], opt[['bp_header']], opt[['p_header']], opt[['rs_header']])
 if(all(listhead %in% names(alldataqq))==F){
 cat('header not found', paste(listhead[!(listhead %in% names(alldataqq))], collapse=','),'\nexit\n')
 q('n')
@@ -51,9 +53,17 @@ png(paste(out,'_qq.png',sep=''))
 fastqq (alldataqq[[opt[['p_header']]]])
 dev.off()
 
+rsheader=opt[['rs_header']]
+if(is.null(opt[['rs_header']])){
 alldataqq$rsid<-paste(alldataqq[[opt[['chr_header']]]], alldataqq[[opt[['bp_header']]]], sep=':')
-png(paste(out,'_man.png', sep=''),   width = 480*3, height = 480*2, res=200)
-fastman(alldataqq,  chr =opt[['chr_header']] , bp = opt[['bp_header']], p = opt[['p_header']], snp='rsid',annotatePval=5E-8)
+rsheader='rsid'
+}else{
+balise<-is.na(alldataqq[[rsheader]]) | alldataqq[[rsheader]]=='.' 
+alldataqq[[rsheader]][balise]<-paste(alldataqq[[opt[['chr_header']]]][balise], alldataqq[[opt[['bp_header']]]][balise], sep=':')
+}
+print(alldataqq)
+png(paste(out,'_man.png', sep=''),   width = 480*6, height = 480*2, res=200)
+fastman(alldataqq,  chr =opt[['chr_header']] , bp = opt[['bp_header']], p = opt[['p_header']], snp=rsheader,annotatePval=5E-8)
 dev.off()
 
 
