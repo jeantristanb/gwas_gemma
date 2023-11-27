@@ -104,4 +104,29 @@ process mergebimbamrel{
     """
 }
 
+/*
+process merge_bimbam_chr{
+  input :
+    tuple val(chr), path(bimam), path(listind), path(filepos)
+  output :
+    tuple val(chr),path(subbimbam), path("listind.bimbam.out"), path(annotation)
+  script :
+    allbimbam=listbimam.join(',')
+    subbimbam='allrelpos.bimbam.gz'
+    subbimbamnd='allrelpos.ind'
+    annotation="annot_rel.txt"
+    """
+     cp ${listind[0]} listind.bimbam.out
+     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam --annotation $annotation
+    """
+}
 
+workflow mergebimbamrel_speed {
+ take :
+
+ main :
+
+ emit :
+
+}
+*/

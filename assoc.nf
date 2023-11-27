@@ -313,9 +313,9 @@ workflow gwasgemma{
 		  chrobimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).flatMap{it.split()[0]}
 		  namebimbamfileI=channel.from(file(params.listfile_bimbam).readLines()).map{tuple(it.split()[0],file(it.split()[1]))}.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true)).join(bimbam_annot)
 		  bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
-		  file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
-		  ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
-		  mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
+		   file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
+		   ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
+		   mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
 		 if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2], it[3]].combinations()}
 		 else bimbamfile=bimbamfileI
 		 bimbamfilerel=mergebimbamrel.out
