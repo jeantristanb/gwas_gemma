@@ -104,29 +104,51 @@ process mergebimbamrel{
     """
 }
 
-/*
-process merge_bimbam_chr{
+process extract_bimbam_chr{
   input :
-    tuple val(chr), path(bimam), path(listind), path(filepos)
+    tuple path(bimbam), path(listind), path(filepos)
   output :
-    tuple val(chr),path(subbimbam), path("listind.bimbam.out"), path(annotation)
+    path(subbimbam), emit : bimbam
+    path(subbimbamnd), emit : ind
+    path(annotation), emit : annot
   script :
-    allbimbam=listbimam.join(',')
+    subbimbam=bimbam+"_sub.bimbam.gz"
+    subbimbamnd=bimbam+"_sub.ind"
+    annotation=bimbam+"_sub.annotation"
+    """
+     cp ${listind[0]} $subbimbamnd
+     chro=`zcat $bimbam|head -1|awk '{print \$1}'|awk -F":" '{print \$2}'`
+     listpos_bimbam.py --listbimbam $bimbam --filepos $filepos --out $subbimbam --annotation $annotation --include_chr \$chro
+    """
+}
+
+process merge_bimbam {
+  input :
+     path(bimbam)
+     path(annot)
+     path(listind)
+  output :
+    tuple path(subbimbam), path(subbimbamind), path(annotation)
+  script :
     subbimbam='allrelpos.bimbam.gz'
-    subbimbamnd='allrelpos.ind'
+    subbimbamind="listind.bimbam.out"
     annotation="annot_rel.txt"
     """
-     cp ${listind[0]} listind.bimbam.out
-     listpos_bimbam.py --listbimbam $allbimbam --filepos $filepos --out $subbimbam --annotation $annotation
+    cat *_sub.bimbam.gz > allrelpos.bimbam.gz
+    cat *.annotation > $annotation
+    cp ${listind[0]} $subbimbamind
     """
 }
 
 workflow mergebimbamrel_speed {
  take :
-
+    listbimbam
+    listind
+    filepos
  main :
-
+   extract_bimbam_chr(listbimbam.combine(listind).combine(filepos))
+   merge_bimbam(extract_bimbam_chr.out.bimbam.collect(), extract_bimbam_chr.out.annot.collect(),extract_bimbam_chr.out.ind.collect())
  emit :
+   merge_bimbam.out   
 
 }
-*/

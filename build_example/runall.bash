@@ -46,17 +46,18 @@ echo " no rerun "$1
 fi
 echo "-------------end test "$1" -------------------------"
 }
-runsim sr1_loco0_dosage0_vcfi_addpc
-runsim sr1_loco0_dosage0_vcfi
-runsim sr1_loco0_dosage0_vcfi_addpc_res_rin
-runsim sr1_loco0_dosage0_vcfi_addpc_nores
-runsim sr1_loco0_dosage1_vcfi_addpc_res_rin
-runsim sr1_loco1_dosage1_vcfi
-runsim sr1_loco0_dosage0_vcfmulti
-runsim sr1_loco1_dosage0_vcfi
-runsim sr1_loco0_dosage1_vcfi
-runsim sr1_loco0_dosage1_vcfi_covres
-runsim sr1_loco0_dosage1_vcfi_covnores
+#runsim sr1_loco0_dosage0_vcfi_addpc
+#runsim sr1_loco0_dosage0_vcfi
+#runsim sr1_loco0_dosage0_vcfi_addpc_res_rin
+#runsim sr1_loco0_dosage0_vcfi_addpc_nores
+#runsim sr1_loco0_dosage1_vcfi_addpc_res_rin
+#runsim sr1_loco1_dosage1_vcfi
+#runsim sr1_loco0_dosage0_vcfmulti
+#runsim sr1_loco1_dosage0_vcfi
+#runsim sr1_loco0_dosage1_vcfi
+#runsim sr1_loco0_dosage1_vcfi_covres
+#runsim sr1_loco0_dosage1_vcfi_covnores
+runsim sr1_loco1_dosage1_bimbammulti
 
 
 for filelog in `ls *.log`

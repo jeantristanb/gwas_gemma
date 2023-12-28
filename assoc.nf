@@ -228,7 +228,8 @@ include {wf_prepare_pheno} from './workflow/pheno.nf'
 include {splitbimbamchro} from './workflow/utils.nf'
 include {formatvcfinbimbam} from './workflow/convert_file.nf'
 include {formatvcfinbimbam_ind} from './workflow/convert_file.nf'
-include {mergebimbamrel} from './workflow/utils.nf'
+//include {mergebimbamrel} from './workflow/utils.nf'
+include {mergebimbamrel_speed as mergebimbamrel} from './workflow/utils.nf'
 include {strmem} from './workflow/utils.nf'
 include {get_chrovcf} from './workflow/vcf.nf'
 include {GemmaBimbamRel} from './workflow/reladness.nf'
@@ -315,7 +316,7 @@ workflow gwasgemma{
 		  bimbamfileI= namebimbamfileI//chrobimbamfileI.phase(namebimbamfileI)//.combine(channel.fromPath(params.file_bimbam_ind, checkIfExists:true))
 		   file_ch_bimbam=bimbamfileI.flatMap{it->it[1]}.collect()
 		   ind_ch_bimbam=channel.fromPath(params.file_bimbam_ind)
-		   mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
+		   mergebimbamrel(bimbamfileI.flatMap{it->it[1]}, ind_ch_bimbam,bed_file_rel)
 		 if(params.gemma_loco==0)bimbamfile=bimbamfileI.flatMap{[it[1],it[2], it[3]].combinations()}
 		 else bimbamfile=bimbamfileI
 		 bimbamfilerel=mergebimbamrel.out
@@ -325,7 +326,7 @@ workflow gwasgemma{
 		 formatvcfinbimbam_ind(get_chrovcf.out.chro_vcf.combine(filepheno))
 		 file_ch_bimbam=formatvcfinbimbam_ind.out.bimbam.flatMap{it->it[1]}.collect()
 		 ind_ch_bimbam=formatvcfinbimbam_ind.out.bimbam.flatMap{it->it[2]}.collect()
-		 mergebimbamrel(file_ch_bimbam, ind_ch_bimbam,bed_file_rel)
+		 mergebimbamrel(formatvcfinbimbam_ind.out.bimbam.flatMap{it->it[1]}, ind_ch_bimbam,bed_file_rel)
 		 bimbamfilerel=mergebimbamrel.out
 		 if(params.gemma_loco==0)bimbamfile=formatvcfinbimbam_ind.out.flatMap{[it[1],it[2], it[3]].combinations()}
 		 else bimbamfile=formatvcfinbimbam_ind.out.bimbam

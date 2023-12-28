@@ -91,7 +91,7 @@ process GemmaBimbamRel{
        time params.big_time
        memory { strmem(params.gemma_mem_req_rel) + 5.GB * (task.attempt -1) }
        maxForks params.max_forks
-       errorStrategy 'retry'
+       errorStrategy { task.exitStatus in 137..144 ? 'retry' : 'terminate' }
        maxRetries 10
        input:
          tuple val(chro), path(bimbam), path(ind),path(annotation),path(listpos)
@@ -104,10 +104,11 @@ process GemmaBimbamRel{
           base=(chro==-1) ? "${tmp}" : "${tmp}_${chro}"
           outposbimbam="posbimbam_"+chro+'.bimbam.gz'
           annot="sub_annot_"+chro+".txt"
+          exclchro=(chro=='-1') ? "" :  " --exclude_chr $chro "
           """
           export OPENBLAS_NUM_THREADS=${params.gemma_num_cores_rel}
           cat $ind|awk '{print 0.2}' > pheno
-          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam --exclude_chr $chro --annotation $annot
+          listpos_bimbam.py --bimbam $bimbam --filepos $listpos --out $outposbimbam $exclchro --annotation $annot
           ${params.gemma_bin} -g $outposbimbam -gk ${params.gemma_relopt} -o $base -p pheno -n 1 -km 1 -a $annot
           """
 }

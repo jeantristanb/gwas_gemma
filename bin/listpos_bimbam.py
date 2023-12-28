@@ -34,7 +34,7 @@ def parseArguments():
     parser.add_argument('--bimbam',type=str,required=False)
     parser.add_argument('--listbimbam',type=str,required=False)
     parser.add_argument('--filepos',type=str,required=False)
-    parser.add_argument('--exclude_chr',type=str,required=False,help="File with phenotype and covariate data", default=-1)
+    parser.add_argument('--exclude_chr',type=str,required=False,help="File with phenotype and covariate data")
     parser.add_argument('--include_chr',type=str,required=False,help="File with phenotype and covariate data")
     parser.add_argument('--annotation',type=str,required=True,help="File with phenotype and covariate data")
     parser.add_argument('--out',type=str,required=True,help="File with phenotype and covariate data")
@@ -43,7 +43,7 @@ def parseArguments():
     return args
 
 
-def extract_listpos(filepos, chro):
+def extract_listpos_chroexcl(filepos, chro):
   listinfo={}
   lirepossave=open(filepos)
   for line in lirepossave :
@@ -54,6 +54,33 @@ def extract_listpos(filepos, chro):
      listinfo[spll[0]].add(spll[1])
   lirepossave.close()
   return listinfo
+
+
+def extract_listpos_chroincl(filepos, chro):
+  listinfo={}
+  lirepossave=open(filepos)
+  for line in lirepossave :
+   spll=line.split()
+   if chro == spll[0] :
+     if  spll[0] not in listinfo :
+       listinfo[spll[0]]=set([])
+     listinfo[spll[0]].add(spll[1])
+  lirepossave.close()
+  return listinfo
+
+def extract_listpos(filepos):
+  listinfo={}
+  lirepossave=open(filepos)
+  for line in lirepossave :
+   spll=line.split()
+   if  spll[0] not in listinfo :
+       listinfo[spll[0]]=set([])
+   listinfo[spll[0]].add(spll[1])
+  lirepossave.close()
+  return listinfo
+
+
+
  
 ## 
 args = parseArguments()
@@ -64,8 +91,15 @@ filebimbamout=args.out
 
 balisefilepos=False
 if filepos :
-  listpossave=extract_listpos(filepos,chro_exclude)
+  if chro_exclude  :
+    listpossave=extract_listpos_chroexcl(filepos,chro_exclude)
+  elif chro_include :
+    listpossave=extract_listpos_chroincl(filepos,chro_include)
+  else :   
+    listpossave=extract_listpos(filepos)
   balisefilepos=True
+
+
 
 
 filebimbam=args.bimbam

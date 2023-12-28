@@ -1,5 +1,6 @@
 scl_enabled java-11
 head=$1
+dirgit=/home/jeantristan/Travail/git/
 
 workdir="-w /spaces/jeantristan/gwas_ckgen/$head"
 
@@ -17,13 +18,13 @@ fasta=~/Travail/git/h3agwas_buildexample/data2/formatimput/hg19.fa.gz
 
 if [ $head == "sr1_loco0_dosage1_vcfi_covnores" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 0  $workdir 
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 0  $workdir 
 exit $?
 fi
 
 if [ $head == "sr1_loco0_dosage1_vcfi_covres" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 1  $workdir 
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 --covariates Sex,batch --pheno_residuals 1  $workdir 
 exit $?
 fi
 
@@ -32,13 +33,13 @@ fi
 ## no loco, format 1 vcf in plink, no dosage used, independant sample relatdness limited position to file_snp_rel
 if [ $head == "sr1_loco0_dosage0_vcfi" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
 exit $?
 fi
 
 if [ $head == "sr1_loco0_dosage0_vcfi_addpc" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 $workdir
 exit $?
 fi
 #params.pheno_tr_fct=""
@@ -47,19 +48,19 @@ fi
 
 if [ $head == "sr1_loco0_dosage0_vcfi_addpc_nores" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 --pheno_residuals 0 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 --pheno_residuals 0 $workdir
 exit $?
 fi
 
 if [ $head == "sr1_loco0_dosage0_vcfi_addpc_res_rin" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 --pheno_residuals 1 --phenores_tr_fct invnorm $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0  --addpcs 10 --pheno_residuals 1 --phenores_tr_fct invnorm $workdir
 exit $?
 fi
 
 if [ $head == "sr1_loco0_dosage1_vcfi_addpc_res_rin" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1  --addpcs 10 --pheno_residuals 1 --phenores_tr_fct invnorm $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1  --addpcs 10 --pheno_residuals 1 --phenores_tr_fct invnorm $workdir
 exit $?
 fi
 ## loco, format 1 vcf in plink, no dosage used, to sample relatdness limited position to file_snp_rel
@@ -67,21 +68,21 @@ fi
 
 if [ $head == "sr1_loco0_dosage0_vcfmulti" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco o   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco o   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
 exit $?
 fi
 
 if [ $head == "sr1_loco0_dosage1_vcfi" ]
 then
 ## no loco, format 1  vcf in plink/bimbam, dosage used, to sample relatdness limited position to file_snp_rel
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf  --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --file_vcf $filevcf  --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
 exit $?
 fi
 
 if [ $head == "sr1_loco1_dosage1_vcfi" ]
 then
 ## loco, format 1  vcf in plink/bimbam, dosage used, to sample relatdness limited position to file_snp_rel
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_vcf $filevcf  $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_vcf $filevcf  $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
 exit $?
 fi
 
@@ -89,7 +90,7 @@ fi
 if [ $head == "sr1_loco0_dosage1_vcfmulti" ]
 then 
 ## no loco, format multi  vcf in plink/bimbam, dosage used, to sample relatdness limited position to file_snp_rel
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 0   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
 exit $?
 fi
 
@@ -97,14 +98,14 @@ fi
 
 if [  $head == "sr1_loco1_dosage1_vcfmulti" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --listfile_vcf $filelistvcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir
 exit $?
 fi
 
 
 if [  $head == "sr1_loco1_dosage0_vcfi" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
+~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_vcf $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 0 $workdir
 exit $?
 fi
 
@@ -123,7 +124,8 @@ fi
 
 if [  $head == "sr1_loco1_dosage1_bimbammulti" ]
 then
-~/nextflow run gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_ $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir --listfile_bimbam h3agwas-examples/utils/listbimbam  --file_bimbam_ind h3agwas-examples/data/imputed/bimbam_chro/1_sample_vcf.keep --bfile h3agwas-examples/data/imputed/imput_data.clean --gemma_mem_req_rel 20GB
+echo "~/nextflow run $dirgit""gwas_ckdawigen/assoc.nf --data $FilePheno --pheno $pheno  --output $head --gemma 1 -profile slurmSingularity  --sample_snps_rel 1  -resume --gemma_loco 1   --output_dir $head --file_ $filevcf --reffasta $fasta --snps_include_rel $file_snp_rel --dosage 1 $workdir --listfile_bimbam h3agwas-examples/utils/listbimbam  --file_bimbam_ind h3agwas-examples/data/imputed/bimbam_chro/14.pbwt_reference_impute.vcf.ind --bfile h3agwas-examples/data/imputed/imput_data.clean --gemma_mem_req_rel 20GB"
+
 exit $?
 fi
 
