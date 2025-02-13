@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 library(ggplot2)
-library(ggplot2)
 library("optparse")
 getstat<-function(x, head){
   rd<-function(x,roun)round(x, roun)
@@ -119,6 +118,10 @@ out=opt[['out']]
 residual<-opt[['residuals']]
 if(any(residual %in% c(0,1))==F){
 cat ("residual vaslue must be 0 (false) or 1 (true)", residual)
+q('no', 2)
+}
+if(fcttr2!='none' & residual==0){
+cat ("fcttr2 must be null if residual is 0", residual, fcttr2)
 q('no', 2)
 }
 names(data_all)[c(1,2)]<-c('FID', 'IID')

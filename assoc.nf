@@ -349,8 +349,16 @@ workflow gwasgemma{
 	   }else{
 	    if(params.gemma_loco==0){
 	      getGemmaRelAll(ch_plkfile_rel)
-	      doGemma(getGemmaRelAll.out.rel.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(covariates).combine(channel.of('gemma/log/')))
-	      ressummstat=doGemma.out.resgemma
+              if(params.gemma_multi==1){
+                  rel=listchro_ch.combine(getGemmaRelAll.out.rel_2)
+	          doGemma(rel.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(covariates).combine(channel.of('gemma/log/')))
+	         doMergeGemma(doGemma.out.resgemma.groupTuple())
+	         ressummstat=doMergeGemma.out
+              }else{
+                  rel=getGemmaRelAll.out.rel
+	          doGemma(rel.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(covariates).combine(channel.of('gemma/log/')))
+	         ressummstat=doGemma.out.resgemma
+              }
 	    }else{
 	     getGemmaRelChro(ch_plkfile_rel.combine(listchro_ch))
 	     doGemma(getGemmaRelChro.out.rel.combine(filepheno).combine(ch_plkfile).combine(filers).combine(listpheno).combine(covariates).combine(channel.of('gemma/chro/')))
@@ -395,6 +403,10 @@ workflow {
 	  format_vcfinplk()
 	  bedfileI=format_vcfinplk.out.plk
 	 }
+         if(params.rs_list==true){
+             println("to format vcf in plink need a fasta file : args --reffasta null")
+              exit 1                                                            
+         }
 	 if(params.rs_list=="")rsfile=Channel.fromPath("${dummy_dir}/06", checkIfExists:true)
 	 else rsfile=Channel.fromPath(params.rs_list, checkIfExists:true)
 	 phenofile=Channel.fromPath(params.data, checkIfExists:true)

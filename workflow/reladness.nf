@@ -47,6 +47,7 @@ process getGemmaRelAll {
        output:
           tuple val(-1),path("output/${base}.*XX.txt"), emit : rel
           path("output/*.log.txt"), emit : log
+          path("output/${base}.*XX.txt"), emit : rel_2
        script:
           base = bed.baseName
           famfile=base+".fam"
