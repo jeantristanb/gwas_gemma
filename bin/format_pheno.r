@@ -120,7 +120,7 @@ if(any(residual %in% c(0,1))==F){
 cat ("residual vaslue must be 0 (false) or 1 (true)", residual)
 q('no', 2)
 }
-if(fcttr2!='none' & residual==0){
+if(opt[['transform_r']]!='none' & residual==0){
 cat ("fcttr2 must be null if residual is 0", residual, fcttr2)
 q('no', 2)
 }
@@ -154,4 +154,5 @@ listcov<-c()
 getstatsumm(data_all_tr, unique(c(newlistpheno, listpheno,listcov)), paste(opt[['out']],"_sumstat.csv",sep=''))
 
 writeLines(paste(newlistpheno,collapse=','), con='pheno.txt')
+write.table(data_all_tr, row.names=F, col.names=T, sep='\t', quote=F, file=paste(opt[['out']],".all.pheno",sep=''))
 write.table(data_all_tr[c('FID','IID', newlistpheno, listcov)], row.names=F, col.names=T, sep='\t', quote=F, file=paste(opt[['out']],".pheno",sep=''))

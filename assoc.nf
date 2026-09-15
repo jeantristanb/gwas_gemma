@@ -417,7 +417,7 @@ workflow {
 	 //listpheno = newNamePheno(params.pheno)
          listpheno=wf_prepare_pheno.out.pheno.flatMap{it->it.split(',')}
 	 cleanvcfwf()
-	 gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out,  wf_prepare_pheno.out.data, rsfile,listpheno, subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, wf_prepare_pheno.out.covar)
+	 if(params.gemma==1)gwasgemma(plinkextractind.out.filterind, subsample_snp_rel.out.plk_rel, getListeChro.out,  wf_prepare_pheno.out.data, rsfile,listpheno, subsample_snp_rel.out.bed_pos_rel, cleanvcfwf.out.filevcf, cleanvcfwf.out.listfilevcf, wf_prepare_pheno.out.covar)
 
 	}
 
